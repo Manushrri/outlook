@@ -633,7 +633,7 @@
     {
       "id": "create_contact",
       "target": "src.tools.contact_tools:create_contact",
-      "description": "Create a new contact in the user's contacts folder. Use get_contact_folders or list_contacts if you want to inspect existing contacts/folders first.",
+      "description": "Create a new contact in the user's contacts folder. Use get_contact_folders to get folder_id if you want to store the contact in a specific folder. Use list_contacts if you want to inspect existing contacts first.",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -695,6 +695,10 @@
           "notes": {
             "type": "string",
             "description": "Notes about the contact"
+          },
+          "folderId": {
+            "type": "string",
+            "description": "Contact folder ID to store the contact in a specific folder. Get folder_id from get_contact_folders tool. If not provided, contact is created in the default contacts folder."
           },
           "user_id": {
             "type": "string",
@@ -1244,11 +1248,11 @@
           },
           "fromEmail": {
             "type": "string",
-            "description": "Sender email address to filter by"
+            "description": "Sender email address to filter by. Leave empty or omit to not filter by sender."
           },
           "subject": {
             "type": "string",
-            "description": "Subject to search for"
+            "description": "Subject to search for. Leave empty or omit to not filter by subject."
           },
           "hasAttachments": {
             "type": "boolean",

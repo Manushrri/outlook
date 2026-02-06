@@ -47,6 +47,30 @@ def add_mail_attachment(
                 "error": "Not authenticated. Please authenticate first."
             }
         
+        # Validate that contentBytes is not empty
+        if not contentBytes or not contentBytes.strip():
+            return {
+                "successful": False,
+                "data": {},
+                "error": "contentBytes cannot be empty. Provide base64-encoded file content."
+            }
+        
+        # First, check if the message is a draft (attachments can only be added to drafts)
+        user = user_id if user_id else "me"
+        check_endpoint = f"/{user}/messages/{message_id}?$select=isDraft"
+        
+        try:
+            message_info = client.get(check_endpoint)
+            if not message_info.get("isDraft", False):
+                return {
+                    "successful": False,
+                    "data": {},
+                    "error": "Cannot add attachment to received/sent message. Only draft messages can have attachments added. Please use a draft message ID. Get draft message IDs using list_messages with folder='drafts' or create a draft first using create_draft_email."
+                }
+        except Exception as check_error:
+            # If we can't check (e.g., message doesn't exist), proceed and let the API return the error
+            pass
+        
         # Build the attachment payload
         attachment_data = {
             "@odata.type": odata_type,
@@ -63,11 +87,10 @@ def add_mail_attachment(
             attachment_data["contentType"] = contentType
         if isInline is not None:
             attachment_data["isInline"] = isInline
-        if item is not None:
+        if item is not None and isinstance(item, dict) and len(item) > 0:
             attachment_data["item"] = item
         
         # Determine the endpoint
-        user = user_id if user_id else "me"
         endpoint = f"/{user}/messages/{message_id}/attachments"
         
         # Make the API call
@@ -79,10 +102,20 @@ def add_mail_attachment(
         }
         
     except Exception as e:
+        error_msg = str(e)
+        # Provide helpful guidance for common errors
+        if "400" in error_msg:
+            error_msg += "\n\nCommon issues:\n"
+            error_msg += "1. The message_id must be for a DRAFT message (not sent/received)\n"
+            error_msg += "2. Get draft message IDs using: list_messages with folder='drafts'\n"
+            error_msg += "3. Or create a draft first using: create_draft_email\n"
+            error_msg += "4. contentBytes must be valid base64-encoded content\n"
+            error_msg += "5. File size must be less than 3 MB\n"
+            error_msg += "6. Do NOT include empty objects {} for optional fields like 'item'"
         return {
             "successful": False,
             "data": {},
-            "error": str(e)
+            "error": error_msg
         }
 
 
@@ -456,25 +489,42 @@ def search_messages(
                 "error": "Not authenticated. Please authenticate first."
             }
         
+        # Normalize empty strings to None for optional parameters
+        if fromEmail == "":
+            fromEmail = None
+        if subject == "":
+            subject = None
+        if query == "":
+            return {
+                "successful": False,
+                "data": {},
+                "error": "query parameter cannot be empty"
+            }
+        
         # Build query parameters using $filter (more reliable than $search for personal accounts)
         params = {}
         filter_parts = []
         
+        # Escape single quotes in query strings to prevent OData injection
+        def escape_odata_string(s: str) -> str:
+            return s.replace("'", "''")
+        
         # Build filter expressions
-        # If both query and subject are provided, search query in body and subject in subject field
-        if query and subject:
-            # Query searches body, subject filters subject field
-            filter_parts.append(f"(contains(subject, '{query}') or contains(bodyPreview, '{query}'))")
-            filter_parts.append(f"contains(subject, '{subject}')")
-        elif query:
-            # Search query in both subject and body
-            filter_parts.append(f"(contains(subject, '{query}') or contains(bodyPreview, '{query}'))")
-        elif subject:
-            # Only filter by subject
-            filter_parts.append(f"contains(subject, '{subject}')")
+        # Note: contains() on bodyPreview may not be supported in all contexts
+        # So we'll search in subject only, or use subject parameter for subject-specific search
+        if query:
+            # Search query in subject (bodyPreview contains() may not be supported)
+            escaped_query = escape_odata_string(query)
+            filter_parts.append(f"contains(subject, '{escaped_query}')")
+        
+        if subject:
+            # Additional subject filter
+            escaped_subject = escape_odata_string(subject)
+            filter_parts.append(f"contains(subject, '{escaped_subject}')")
         
         if fromEmail:
-            filter_parts.append(f"from/emailAddress/address eq '{fromEmail}'")
+            escaped_email = escape_odata_string(fromEmail)
+            filter_parts.append(f"from/emailAddress/address eq '{escaped_email}'")
         
         if hasAttachments is not None:
             filter_parts.append(f"hasAttachments eq {str(hasAttachments).lower()}")

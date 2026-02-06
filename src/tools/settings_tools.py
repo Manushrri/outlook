@@ -344,17 +344,73 @@ def update_mailbox_settings(
         # Build the mailbox settings update payload
         settings_data = {}
         
+        # Validate and add automaticRepliesSetting
         if automaticRepliesSetting is not None:
+            if not isinstance(automaticRepliesSetting, dict) or len(automaticRepliesSetting) == 0:
+                return {
+                    "successful": False,
+                    "data": {},
+                    "error": "automaticRepliesSetting must be a non-empty dictionary. Example: {\"status\": \"scheduled\", \"externalAudience\": \"all\", \"scheduledStartDateTime\": {\"dateTime\": \"2026-02-10T00:00:00\", \"timeZone\": \"UTC\"}, \"scheduledEndDateTime\": {\"dateTime\": \"2026-02-15T23:59:59\", \"timeZone\": \"UTC\"}, \"internalReplyMessage\": \"I'm out of office...\", \"externalReplyMessage\": \"I'm out of office...\"}"
+                }
+            # Validate required status field
+            if "status" not in automaticRepliesSetting:
+                return {
+                    "successful": False,
+                    "data": {},
+                    "error": "automaticRepliesSetting must include 'status' field. Valid values: 'disabled', 'alwaysEnabled', 'scheduled'"
+                }
             settings_data["automaticRepliesSetting"] = automaticRepliesSetting
         
+        # Validate and add language - must be non-empty dict with locale
         if language is not None:
+            if not isinstance(language, dict) or len(language) == 0:
+                return {
+                    "successful": False,
+                    "data": {},
+                    "error": "language must be a non-empty dictionary with 'locale' and 'displayName' fields. Example: {\"locale\": \"en-US\", \"displayName\": \"English (United States)\"}. If you don't want to change language, omit this field entirely."
+                }
+            if "locale" not in language:
+                return {
+                    "successful": False,
+                    "data": {},
+                    "error": "language must include 'locale' field. Example: {\"locale\": \"en-US\", \"displayName\": \"English (United States)\"}"
+                }
             settings_data["language"] = language
         
+        # Validate and add timeZone - must be non-empty string
         if timeZone is not None:
+            if not isinstance(timeZone, str) or not timeZone.strip():
+                return {
+                    "successful": False,
+                    "data": {},
+                    "error": "timeZone must be a non-empty string. Example: 'Pacific Standard Time' or 'UTC'. If you don't want to change time zone, omit this field entirely."
+                }
             settings_data["timeZone"] = timeZone
         
+        # Validate and add workingHours - must be non-empty dict
         if workingHours is not None:
+            if not isinstance(workingHours, dict) or len(workingHours) == 0:
+                return {
+                    "successful": False,
+                    "data": {},
+                    "error": "workingHours must be a non-empty dictionary. Example: {\"daysOfWeek\": [\"monday\", \"tuesday\", \"wednesday\", \"thursday\", \"friday\"], \"startTime\": \"09:00:00\", \"endTime\": \"17:00:00\", \"timeZone\": {\"name\": \"Pacific Standard Time\"}}. If you don't want to change working hours, omit this field entirely."
+                }
+            # Validate required fields
+            if "daysOfWeek" not in workingHours or "startTime" not in workingHours or "endTime" not in workingHours:
+                return {
+                    "successful": False,
+                    "data": {},
+                    "error": "workingHours must include 'daysOfWeek', 'startTime', and 'endTime' fields. Example: {\"daysOfWeek\": [\"monday\", \"tuesday\"], \"startTime\": \"09:00:00\", \"endTime\": \"17:00:00\", \"timeZone\": {\"name\": \"Pacific Standard Time\"}}"
+                }
             settings_data["workingHours"] = workingHours
+        
+        # Ensure at least one field is provided
+        if len(settings_data) == 0:
+            return {
+                "successful": False,
+                "data": {},
+                "error": "At least one setting must be provided. Provide automaticRepliesSetting, language, timeZone, or workingHours."
+            }
         
         # Determine the endpoint
         endpoint = "/me/mailboxSettings"

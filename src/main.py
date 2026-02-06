@@ -174,9 +174,22 @@ def create_dynamic_wrapper(func, description, tool_id=None):
     
     # Source code for wrapper
     # We use __get_client() to fetch the client at runtime
+    # Convert empty strings and empty dicts to None for optional parameters
+    normalize_kwargs = []
+    for n in names:
+        # Check if parameter has a default (is optional)
+        param = next((p for p in params if p.name == n), None)
+        if param and param.default is not inspect._empty:
+            # Optional parameter - normalize empty strings and empty dicts to None
+            # Check if it's an empty string or an empty dict
+            normalize_kwargs.append(f"{n!r}: None if ({n} == '' or (isinstance({n}, dict) and len({n}) == 0)) else {n}")
+        else:
+            # Required parameter - use as-is
+            normalize_kwargs.append(f"{n!r}: {n}")
+    
     src = (
         f"def wrapper({decl}):\n"
-        f"    kwargs = {{{', '.join([f'{n!r}: {n}' for n in names])}}}\n"
+        f"    kwargs = {{{', '.join(normalize_kwargs)}}}\n"
         f"    client = __get_client()\n"
         f"    return __func(client=client, **kwargs)\n"
     )

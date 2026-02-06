@@ -21,6 +21,7 @@ def create_contact(
     birthday: Optional[str] = None,
     categories: Optional[List[str]] = None,
     notes: Optional[str] = None,
+    folderId: Optional[str] = None,
     user_id: Optional[str] = None
 ) -> dict:
     """
@@ -42,6 +43,7 @@ def create_contact(
         birthday: Birthday (ISO 8601 date)
         categories: List of categories
         notes: Notes about the contact
+        folderId: Optional contact folder ID to store the contact in a specific folder. Get folder_id from get_contact_folders tool. If not provided, contact is created in the default contacts folder.
         user_id: Optional user ID (defaults to 'me')
     
     Returns:
@@ -87,9 +89,12 @@ def create_contact(
         if notes is not None:
             contact_data["personalNotes"] = notes
         
-        # Determine the endpoint
+        # Determine the endpoint based on whether folderId is provided
         user = user_id if user_id else "me"
-        endpoint = f"/{user}/contacts"
+        if folderId:
+            endpoint = f"/{user}/contactFolders/{folderId}/contacts"
+        else:
+            endpoint = f"/{user}/contacts"
         
         # Make the API call
         result = client.post(endpoint, json=contact_data)

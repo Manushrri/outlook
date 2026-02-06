@@ -162,7 +162,26 @@ class OutlookClient:
             else:
                 raise Exception("Authentication expired. Please re-authenticate.")
         
-        response.raise_for_status()
+        if not response.ok:
+            error_msg = f"{response.status_code} Client Error: {response.reason}"
+            try:
+                error_data = response.json()
+                if "error" in error_data:
+                    error_info = error_data["error"]
+                    if isinstance(error_info, dict):
+                        error_msg += f" for url: {url}"
+                        if "message" in error_info:
+                            error_msg += f"\nError: {error_info['message']}"
+                        if "code" in error_info:
+                            error_msg += f"\nCode: {error_info['code']}"
+                        if "details" in error_info:
+                            error_msg += f"\nDetails: {error_info['details']}"
+                    else:
+                        error_msg += f" for url: {url}\nError: {error_info}"
+            except:
+                error_msg += f" for url: {url}"
+            raise requests.exceptions.HTTPError(error_msg, response=response)
+        
         return response.json() if response.content else {}
     
     def get(self, endpoint: str, **kwargs) -> dict:
