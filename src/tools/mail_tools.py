@@ -3,6 +3,8 @@ Microsoft Outlook Mail Tools
 """
 
 import base64
+import mimetypes
+from pathlib import Path
 from typing import Optional, List
 
 
@@ -11,7 +13,8 @@ def add_mail_attachment(
     message_id: str,
     name: str,
     odata_type: str,
-    contentBytes: str,
+    contentBytes: Optional[str] = None,
+    file_path: Optional[str] = None,
     contentId: Optional[str] = None,
     contentLocation: Optional[str] = None,
     contentType: Optional[str] = None,
@@ -28,10 +31,11 @@ def add_mail_attachment(
         message_id: The ID of the message to attach to
         name: The name of the attachment
         odata_type: The OData type of the attachment (e.g., "#microsoft.graph.fileAttachment")
-        contentBytes: Base64-encoded content of the file
+        contentBytes: Base64-encoded content of the file (optional if file_path is provided)
+        file_path: Path to the file to attach (will be automatically encoded to base64)
         contentId: Optional content ID for inline attachments
         contentLocation: Optional content location URL
-        contentType: Optional MIME type of the attachment
+        contentType: Optional MIME type of the attachment (auto-detected from file_path if not provided)
         isInline: Whether the attachment is inline
         item: Optional item data for item attachments
         user_id: Optional user ID (defaults to 'me')
@@ -47,12 +51,54 @@ def add_mail_attachment(
                 "error": "Not authenticated. Please authenticate first."
             }
         
-        # Validate that contentBytes is not empty
+        # Handle file_path: read file and encode to base64
+        if file_path:
+            try:
+                file_path_obj = Path(file_path)
+                if not file_path_obj.exists():
+                    return {
+                        "successful": False,
+                        "data": {},
+                        "error": f"File not found: {file_path}"
+                    }
+                
+                # Check file size (3 MB limit)
+                file_size = file_path_obj.stat().st_size
+                if file_size > 3 * 1024 * 1024:  # 3 MB
+                    return {
+                        "successful": False,
+                        "data": {},
+                        "error": f"File size ({file_size / 1024 / 1024:.2f} MB) exceeds 3 MB limit. Use a smaller file or upload via other method."
+                    }
+                
+                # Read file and encode to base64
+                with open(file_path_obj, 'rb') as f:
+                    file_content = f.read()
+                    contentBytes = base64.b64encode(file_content).decode('utf-8')
+                
+                # Auto-detect content type if not provided
+                if not contentType:
+                    detected_type, _ = mimetypes.guess_type(str(file_path_obj))
+                    if detected_type:
+                        contentType = detected_type
+                
+                # Use file name if name not provided
+                if not name or name.strip() == "":
+                    name = file_path_obj.name
+                    
+            except Exception as file_error:
+                return {
+                    "successful": False,
+                    "data": {},
+                    "error": f"Error reading file: {str(file_error)}"
+                }
+        
+        # Validate that contentBytes is provided (either directly or via file_path)
         if not contentBytes or not contentBytes.strip():
             return {
                 "successful": False,
                 "data": {},
-                "error": "contentBytes cannot be empty. Provide base64-encoded file content."
+                "error": "Either contentBytes (base64-encoded) or file_path must be provided."
             }
         
         # First, check if the message is a draft (attachments can only be added to drafts)
@@ -109,7 +155,7 @@ def add_mail_attachment(
             error_msg += "1. The message_id must be for a DRAFT message (not sent/received)\n"
             error_msg += "2. Get draft message IDs using: list_messages with folder='drafts'\n"
             error_msg += "3. Or create a draft first using: create_draft_email\n"
-            error_msg += "4. contentBytes must be valid base64-encoded content\n"
+            error_msg += "4. Either provide contentBytes (base64-encoded) OR file_path (path to file)\n"
             error_msg += "5. File size must be less than 3 MB\n"
             error_msg += "6. Do NOT include empty objects {} for optional fields like 'item'"
         return {

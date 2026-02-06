@@ -3,7 +3,7 @@
     {
       "id": "add_mail_attachment",
       "target": "src.tools.mail_tools:add_mail_attachment",
-      "description": "Add an attachment to an email message. Use when you have a message id and need to attach a small (<3 MB) file or reference. Get message_id from tools like list_messages or search_messages (then pick a message's id).",
+      "description": "Add an attachment to an email message. Use when you have a message id and need to attach a small (<3 MB) file or reference. Get message_id from tools like list_messages or search_messages (then pick a message's id). You can provide either file_path (path to file - recommended) OR contentBytes (base64-encoded content).",
       "input_schema": {
         "type": "object",
         "properties": {
@@ -13,15 +13,19 @@
           },
           "name": {
             "type": "string",
-            "description": "The name of the attachment"
+            "description": "The name of the attachment (auto-filled from file_path if not provided)"
           },
           "odata_type": {
             "type": "string",
             "description": "The OData type (e.g., '#microsoft.graph.fileAttachment')"
           },
+          "file_path": {
+            "type": "string",
+            "description": "Path to the file to attach (recommended - will be automatically encoded to base64). Example: 'C:\\Users\\name\\file.pdf' or './document.docx'"
+          },
           "contentBytes": {
             "type": "string",
-            "description": "Base64-encoded content of the file"
+            "description": "Base64-encoded content of the file (optional if file_path is provided)"
           },
           "contentId": {
             "type": "string",
@@ -33,7 +37,7 @@
           },
           "contentType": {
             "type": "string",
-            "description": "MIME type of the attachment"
+            "description": "MIME type of the attachment (auto-detected from file_path if not provided)"
           },
           "isInline": {
             "type": "boolean",
@@ -48,7 +52,7 @@
             "description": "User ID (defaults to 'me')"
           }
         },
-        "required": ["message_id", "name", "odata_type", "contentBytes"]
+        "required": ["message_id", "odata_type"]
       }
     },
     {
