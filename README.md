@@ -1,6 +1,6 @@
 # Microsoft Outlook MCP Server
 
-A modular MCP (Model Context Protocol) server for Microsoft Outlook integration. Provides 43 tools for managing emails, calendars, contacts, and mailbox settings via Microsoft Graph API.
+A modular MCP (Model Context Protocol) server for Microsoft Outlook integration. Provides 64+ tools for managing emails, calendars, contacts, mailbox settings, Teams chats, and more via Microsoft Graph API.
 
 ## Features
 
@@ -23,16 +23,18 @@ microsoft-outlook/
 │   ├── config.py           # Configuration settings
 │   └── tools/              # Modular tool implementations
 │       ├── __init__.py     # Tools package marker
-│       ├── mail_tools.py   # 10 mail tools
-│       ├── list_tools.py   # 8 list tools
-│       ├── calendar_tools.py # 9 calendar tools
-│       ├── contact_tools.py  # 7 contact tools
-│       ├── attachment_tools.py # 1 attachment tool
+│       ├── mail_tools.py   # 18 mail tools
+│       ├── list_tools.py   # 12 list tools
+│       ├── calendar_tools.py # 10 calendar tools
+│       ├── contact_tools.py  # 6 contact tools
+│       ├── attachment_tools.py # 2 attachment tools
 │       ├── folder_tools.py    # 2 folder tools
-│       ├── category_tools.py  # 2 category tools
+│       ├── category_tools.py  # 3 category tools
 │       ├── profile_tools.py   # 1 profile tool
-│       ├── rule_tools.py      # 1 rule tool
-│       └── settings_tools.py # 6 settings tools
+│       ├── rule_tools.py      # 4 rule tools
+│       ├── settings_tools.py # 6 settings tools
+│       ├── user_tools.py      # 1 user tool
+│       └── teams_tools.py    # 3 Teams tools
 ├── run_server.py           # Convenience wrapper for src.main
 ├── test_auth.py            # Authentication bootstrap (REQUIRED - run once)
 ├── tools_manifest.json     # Tool definitions for dynamic loading
@@ -70,6 +72,19 @@ pip install -r requirements.txt
      - Platform: **Mobile and desktop applications**
      - URI: `https://login.microsoftonline.com/common/oauth2/nativeclient`
 5. Click **Register**
+
+### 2.5. Enable Public Client Flows (IMPORTANT)
+
+**This step is required for device code flow authentication!**
+
+1. Go to your app registration
+2. Click **Authentication** in the left menu
+3. Scroll down to **Advanced settings**
+4. Find **"Allow public client flows"**
+5. Set it to **"Yes"**
+6. Click **Save** at the top
+
+**Why this is needed:** Device code flow requires public client flows to be enabled. Without this setting, you'll get an error like `AADSTS70002: The provided client is not supported for this feature. The client application must be marked as 'mobile.'`
 
 ### 3. Configure API Permissions
 
@@ -328,23 +343,31 @@ python -m src.main
 
 ---
 
-## Available Tools (43 total)
+## Available Tools (64+ total)
 
-### Mail (10 tools)
+### Mail (18 tools)
 | Tool | Description |
 |------|-------------|
 | `send_email` | Send a new email with subject, body, recipients, optional attachment |
 | `create_draft` | Create a draft email (subject, body, recipients, optional attachment) |
+| `send_draft` | Send an existing draft message |
 | `create_draft_reply` | Create a draft reply to an existing message |
 | `reply_email` | Send a plain text reply to a received message |
+| `forward_message` | Forward an email message to new recipients |
 | `get_message` | Get one email message by `message_id` (optionally with headers) |
 | `list_messages` | List messages from a folder with rich filters (inbox, drafts, etc.) |
+| `list_mail_folder_messages` | List messages from a specific mail folder |
 | `search_messages` | Search messages by text, sender, subject, attachments, pagination |
+| `query_emails` | Query emails within a single folder using OData filters |
 | `update_email` | Update a **draft** message (subject, body, recipients, importance) |
+| `delete_message` | Permanently delete a message by `message_id` |
+| `permanent_delete_message` | Permanently delete a message (unrecoverable) |
 | `move_message` | Move a message to another folder by `message_id` |
-| `add_mail_attachment` | Attach a small file (<3 MB) to an existing message |
+| `batch_move_messages` | Batch-move up to 20 messages to a destination folder |
+| `batch_update_messages` | Batch-update up to 20 messages (read/unread, categories, etc.) |
+| `add_mail_attachment` | Attach a small file (<3 MB) to an existing **draft** message |
 
-### Calendar (9 tools)
+### Calendar (14 tools)
 | Tool | Description |
 |------|-------------|
 | `create_calendar` | Create a new calendar |
@@ -352,15 +375,20 @@ python -m src.main
 | `create_event` | Create a new event (subject, body, start/end, time zone, attendees) |
 | `list_events` | List events with filters, ordering, selection, timezone preference |
 | `get_event` | Get full details for a specific event by `event_id` |
+| `get_calendar_view` | Get events active during a time window (includes multi-day events) |
 | `update_calendar_event` | Update event (subject, body, time, location, attendees, categories) |
 | `delete_event` | Delete an event (optionally notify attendees) |
+| `decline_event` | Decline an event invitation with optional comment |
+| `find_meeting_times` | Find optimal meeting times based on attendee availability |
 | `list_reminders` | Get reminders for events in a time range |
 | `get_schedule` | Get free/busy availability for email addresses over a time window |
+| `add_event_attachment` | Attach a file or item to a calendar event by `event_id` |
+| `list_event_attachments` | List attachments for a specific calendar event |
 
 ### Contacts (7 tools)
 | Tool | Description |
 |------|-------------|
-| `create_contact` | Create a new contact in the default contacts folder |
+| `create_contact` | Create a new contact (optionally in a specific folder) |
 | `list_contacts` | List contacts from the default or a specific contact folder |
 | `get_contact` | Get details for a contact by `contact_id` |
 | `update_contact` | Update an existing contact (name, emails, phones, company info) |
@@ -368,23 +396,33 @@ python -m src.main
 | `create_contact_folder` | Create a new contact folder |
 | `get_contact_folders` | List contact folders with optional filters and expansions |
 
-### Attachments (4 tools)
+### Attachments (3 tools)
 | Tool | Description |
 |------|-------------|
-| `download_attachment` | Download a specific attachment by `message_id` + `attachment_id` |
-| `list_attachments` | List attachment metadata (name, size, type) for a message |
-| `add_event_attachment` | Attach a file or item to a calendar event by `event_id` |
-| `list_event_attachments` | List attachments for a specific calendar event |
+| `download_outlook_attachment` | Download a specific attachment by `message_id` + `attachment_id` |
+| `list_outlook_attachments` | List attachment metadata (name, size, type) for a message |
+| `create_attachment_upload_session` | Create an upload session for large attachments (>3 MB) |
 
-### Folders & Rules (3 tools)
+### Folders & Rules (8 tools)
 | Tool | Description |
 |------|-------------|
 | `list_mail_folders` | List top-level mail folders (Inbox, Drafts, Sent Items, etc.) |
+| `list_child_mail_folders` | List child folders of a specific mail folder |
 | `create_mail_folder` | Create a new mail folder |
 | `delete_mail_folder` | Delete an existing mail folder by `folder_id` |
 | `create_email_rule` | Create a mail rule with conditions and actions |
+| `list_email_rules` | List email rules for a mailbox |
+| `update_email_rule` | Update an existing email rule |
+| `delete_email_rule` | Delete an email rule |
 
-### Settings & Profile (9 tools)
+### Categories (3 tools)
+| Tool | Description |
+|------|-------------|
+| `create_master_category` | Create a new category in the user's master category list |
+| `get_master_categories` | List all master categories |
+| `delete_master_category` | Delete a master category |
+
+### Settings & Profile (7 tools)
 | Tool | Description |
 |------|-------------|
 | `get_profile` | Get the user's Outlook profile (basic user information) |
@@ -394,8 +432,18 @@ python -m src.main
 | `get_mail_tips` | Get mail tips (automatic replies, mailbox full, etc.) for recipients |
 | `get_supported_languages` | List mailbox-supported languages |
 | `get_supported_time_zones` | List supported time zones (Windows or IANA) |
-| `create_master_category` | Create a new category in the user's master category list |
-| `get_master_categories` | List all master categories |
+
+### Teams (3 tools)
+| Tool | Description |
+|------|-------------|
+| `list_chats` | List Microsoft Teams chats for the user |
+| `list_chat_messages` | List messages from a specific Teams chat |
+| `pin_message` | Pin a message in a Teams chat |
+
+### Users (1 tool)
+| Tool | Description |
+|------|-------------|
+| `list_users` | List users in the organization (admin only) |
 
 ---
 
@@ -686,6 +734,7 @@ update_mailbox_settings
 |-------|-------|----------|
 | `AADSTS65001: The user or administrator has not consented` | Missing API permissions | Add required permissions in Azure Portal and grant consent |
 | `AADSTS700016: Application not found` | Invalid client ID | Double-check `OUTLOOK_CLIENT_ID` in `.env` |
+| `AADSTS70002: The provided client is not supported for this feature. The client application must be marked as 'mobile.'` | Public client flows not enabled | Go to Azure Portal → App Registration → Authentication → Advanced settings → Set "Allow public client flows" to "Yes" → Save |
 | `Authentication expired. Please re-authenticate.` | Refresh token expired | Delete `.token_cache.json` and run `test_auth.py` again |
 | `404 Client Error: Not Found` | Invalid message/event ID | Verify the ID exists using `list_messages` or `list_events` |
 | `400 Client Error: Bad Request` | Invalid request format | Check parameter format (e.g., body must be `{"contentType": "text", "content": "..."}`) |

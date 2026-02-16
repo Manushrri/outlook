@@ -165,6 +165,85 @@ def add_mail_attachment(
         }
 
 
+def delete_message(
+    client,
+    message_id: str,
+    user_id: Optional[str] = None
+) -> dict:
+    """
+    Permanently delete an Outlook email message by its message_id.
+    Use when removing unwanted messages, cleaning up drafts, or performing
+    mailbox maintenance.
+
+    Get message_id from list_messages or search_messages (pick the 'id' field
+    of the message you want to delete).
+
+    Args:
+        client: The OutlookClient instance
+        message_id: The ID of the message to delete.
+                    Get from list_messages or search_messages.
+        user_id: Optional user ID (defaults to 'me')
+
+    Returns:
+        dict with 'successful', 'data', and optional 'error' fields
+    """
+    try:
+        if not client.is_authenticated():
+            return {
+                "successful": False,
+                "data": {},
+                "error": "Not authenticated. Please authenticate first."
+            }
+
+        user = user_id if user_id else "me"
+
+        # First, verify the message exists and get its details for confirmation
+        check_endpoint = f"/{user}/messages/{message_id}?$select=id,subject,from,receivedDateTime,isDraft"
+        try:
+            message_info = client.get(check_endpoint)
+        except Exception as check_error:
+            error_msg = str(check_error)
+            if "404" in error_msg or "Not Found" in error_msg:
+                return {
+                    "successful": False,
+                    "data": {},
+                    "error": f"Message not found. The message_id '{message_id}' does not exist or has already been deleted. Get a valid message_id from list_messages or search_messages."
+                }
+            return {
+                "successful": False,
+                "data": {},
+                "error": f"Could not verify message: {error_msg}"
+            }
+
+        # Now delete the verified message
+        endpoint = f"/{user}/messages/{message_id}"
+
+        # DELETE returns 204 No Content on success
+        client.delete(endpoint)
+
+        # Return info about what was deleted
+        deleted_subject = message_info.get("subject", "Unknown")
+        deleted_from = message_info.get("from", {}).get("emailAddress", {}).get("address", "Unknown")
+        was_draft = message_info.get("isDraft", False)
+
+        return {
+            "successful": True,
+            "data": {
+                "message": "Message deleted successfully",
+                "deleted_subject": deleted_subject,
+                "deleted_from": deleted_from,
+                "was_draft": was_draft
+            }
+        }
+
+    except Exception as e:
+        return {
+            "successful": False,
+            "data": {},
+            "error": str(e)
+        }
+
+
 def create_draft(
     client,
     subject: str,
@@ -318,6 +397,76 @@ def create_draft_reply(
             "data": result
         }
         
+    except Exception as e:
+        return {
+            "successful": False,
+            "data": {},
+            "error": str(e)
+        }
+
+
+def forward_message(
+    client,
+    message_id: str,
+    to_recipients: List[str],
+    comment: Optional[str] = None,
+    user_id: Optional[str] = None
+) -> dict:
+    """
+    Forward an existing email message to new recipients.
+    Use when you need to send an existing email to someone else.
+
+    Get message_id from list_messages or search_messages (pick the 'id' field
+    of the message you want to forward).
+
+    Args:
+        client: The OutlookClient instance
+        message_id: The ID of the message to forward.
+                    Get from list_messages or search_messages.
+        to_recipients: List of recipient email addresses to forward to.
+        comment: Optional message to include with the forwarded email.
+        user_id: Optional user ID (defaults to 'me')
+
+    Returns:
+        dict with 'successful', 'data', and optional 'error' fields
+    """
+    try:
+        if not client.is_authenticated():
+            return {
+                "successful": False,
+                "data": {},
+                "error": "Not authenticated. Please authenticate first."
+            }
+
+        if not to_recipients:
+            return {
+                "successful": False,
+                "data": {},
+                "error": "to_recipients list cannot be empty. Provide at least one email address."
+            }
+
+        user = user_id if user_id else "me"
+
+        # Build the forward payload
+        forward_data = {
+            "toRecipients": [
+                {"emailAddress": {"address": email}} for email in to_recipients
+            ]
+        }
+
+        if comment is not None:
+            forward_data["comment"] = comment
+
+        endpoint = f"/{user}/messages/{message_id}/forward"
+
+        # forward action returns no content on success (202)
+        client.post(endpoint, json=forward_data)
+
+        return {
+            "successful": True,
+            "data": {"message": "Message forwarded successfully"}
+        }
+
     except Exception as e:
         return {
             "successful": False,
@@ -733,6 +882,463 @@ def update_email(
             "successful": False,
             "data": {},
             "error": error_msg
+        }
+
+
+def batch_move_messages(
+    client,
+    message_ids: List[str],
+    destination_id: str,
+    user_id: Optional[str] = None
+) -> dict:
+    """
+    Batch-move up to 20 Outlook messages to a destination folder in a single
+    Microsoft Graph $batch call. Use when moving multiple messages to avoid
+    per-message move API calls.
+
+    Get message_ids from list_messages or search_messages (pick the 'id' field
+    of each message you want to move). Get destination_id from list_mail_folders
+    (use the 'id' of the target folder, or a well-known name like 'inbox',
+    'drafts', 'deleteditems', 'sentitems').
+
+    Args:
+        client: The OutlookClient instance
+        message_ids: List of message IDs to move (max 20)
+        destination_id: The destination folder ID or well-known name.
+                        Get this from list_mail_folders.
+        user_id: Optional user ID (defaults to 'me')
+
+    Returns:
+        dict with 'successful', 'data', and optional 'error' fields
+    """
+    try:
+        if not client.is_authenticated():
+            return {
+                "successful": False,
+                "data": {},
+                "error": "Not authenticated. Please authenticate first."
+            }
+
+        if not message_ids:
+            return {
+                "successful": False,
+                "data": {},
+                "error": "message_ids list cannot be empty."
+            }
+
+        if len(message_ids) > 20:
+            return {
+                "successful": False,
+                "data": {},
+                "error": "Cannot batch-move more than 20 messages at once. Please split into smaller batches."
+            }
+
+        user = user_id if user_id else "me"
+
+        # Build individual requests for the $batch payload
+        requests_list = []
+        for idx, msg_id in enumerate(message_ids):
+            requests_list.append({
+                "id": str(idx + 1),
+                "method": "POST",
+                "url": f"/{user}/messages/{msg_id}/move",
+                "headers": {"Content-Type": "application/json"},
+                "body": {"destinationId": destination_id}
+            })
+
+        batch_payload = {"requests": requests_list}
+
+        # POST to the $batch endpoint
+        result = client.post("/$batch", json=batch_payload)
+
+        # Summarise per-request outcomes
+        responses = result.get("responses", [])
+        failures = [r for r in responses if r.get("status", 0) >= 400]
+
+        if failures:
+            return {
+                "successful": False,
+                "data": result,
+                "error": f"{len(failures)} of {len(message_ids)} move operations failed. Check 'data.responses' for details."
+            }
+
+        return {
+            "successful": True,
+            "data": result
+        }
+
+    except Exception as e:
+        return {
+            "successful": False,
+            "data": {},
+            "error": str(e)
+        }
+
+
+def batch_update_messages(
+    client,
+    updates: List[dict],
+    user_id: Optional[str] = None
+) -> dict:
+    """
+    Batch-update up to 20 Outlook messages per call using Microsoft Graph JSON
+    batching. Use when marking multiple messages read/unread or updating other
+    properties to avoid per-message PATCH calls.
+
+    Each item in 'updates' must contain a 'message_id' key and one or more
+    updatable properties such as:
+      - isRead (bool): mark read/unread
+      - categories (list[str]): assign categories
+      - importance (str): 'low', 'normal', or 'high'
+      - flag (dict): e.g. {"flagStatus": "flagged"}
+      - inferenceClassification (str): 'focused' or 'other'
+
+    Get message_id values from list_messages or search_messages (pick the 'id'
+    field of each message you want to update).
+
+    Example 'updates':
+      [
+        {"message_id": "AAMk...", "isRead": true},
+        {"message_id": "AAMk...", "isRead": false, "importance": "high"}
+      ]
+
+    Args:
+        client: The OutlookClient instance
+        updates: List of dicts, each with 'message_id' and properties to update (max 20)
+        user_id: Optional user ID (defaults to 'me')
+
+    Returns:
+        dict with 'successful', 'data', and optional 'error' fields
+    """
+    try:
+        if not client.is_authenticated():
+            return {
+                "successful": False,
+                "data": {},
+                "error": "Not authenticated. Please authenticate first."
+            }
+
+        if not updates:
+            return {
+                "successful": False,
+                "data": {},
+                "error": "updates list cannot be empty."
+            }
+
+        if len(updates) > 20:
+            return {
+                "successful": False,
+                "data": {},
+                "error": "Cannot batch-update more than 20 messages at once. Please split into smaller batches."
+            }
+
+        user = user_id if user_id else "me"
+
+        # Build individual requests for the $batch payload
+        requests_list = []
+        for idx, update in enumerate(updates):
+            msg_id = update.get("message_id")
+            if not msg_id:
+                return {
+                    "successful": False,
+                    "data": {},
+                    "error": f"Update at index {idx} is missing required 'message_id' field."
+                }
+
+            # Build the PATCH body (everything except message_id)
+            patch_body = {k: v for k, v in update.items() if k != "message_id"}
+
+            if not patch_body:
+                return {
+                    "successful": False,
+                    "data": {},
+                    "error": f"Update at index {idx} has no properties to update besides 'message_id'."
+                }
+
+            requests_list.append({
+                "id": str(idx + 1),
+                "method": "PATCH",
+                "url": f"/{user}/messages/{msg_id}",
+                "headers": {"Content-Type": "application/json"},
+                "body": patch_body
+            })
+
+        batch_payload = {"requests": requests_list}
+
+        # POST to the $batch endpoint
+        result = client.post("/$batch", json=batch_payload)
+
+        # Summarise per-request outcomes
+        responses = result.get("responses", [])
+        failures = [r for r in responses if r.get("status", 0) >= 400]
+
+        if failures:
+            return {
+                "successful": False,
+                "data": result,
+                "error": f"{len(failures)} of {len(updates)} update operations failed. Check 'data.responses' for details."
+            }
+
+        return {
+            "successful": True,
+            "data": result
+        }
+
+    except Exception as e:
+        return {
+            "successful": False,
+            "data": {},
+            "error": str(e)
+        }
+
+
+def permanent_delete_message(
+    client,
+    message_id: str,
+    mail_folder_id: Optional[str] = None,
+    user_id: Optional[str] = None
+) -> dict:
+    """
+    Permanently delete an Outlook message by moving it to the Purges folder
+    in the dumpster. Unlike standard delete_message, this action makes the
+    message UNRECOVERABLE.
+
+    IMPORTANT: This is NOT the same as delete_message — permanentDelete is
+    irreversible. Not available in US Government L4, L5 (DOD), or
+    China (21Vianet) deployments.
+
+    Get message_id from list_messages or search_messages (pick the 'id' field).
+    Optionally provide mail_folder_id from list_mail_folders if the message
+    is in a specific folder.
+
+    Args:
+        client: The OutlookClient instance
+        message_id: The ID of the message to permanently delete.
+                    Get from list_messages or search_messages.
+        mail_folder_id: Optional folder ID containing the message.
+                        Get from list_mail_folders.
+        user_id: Optional user ID (defaults to 'me')
+
+    Returns:
+        dict with 'successful', 'data', and optional 'error' fields
+    """
+    try:
+        if not client.is_authenticated():
+            return {
+                "successful": False,
+                "data": {},
+                "error": "Not authenticated. Please authenticate first."
+            }
+
+        user = user_id if user_id else "me"
+
+        # Verify the message exists first
+        check_endpoint = f"/{user}/messages/{message_id}?$select=id,subject,isDraft"
+        try:
+            message_info = client.get(check_endpoint)
+        except Exception as check_error:
+            error_msg = str(check_error)
+            if "404" in error_msg or "Not Found" in error_msg:
+                return {
+                    "successful": False,
+                    "data": {},
+                    "error": f"Message not found. The message_id '{message_id}' does not exist or has already been deleted. Get a valid message_id from list_messages or search_messages."
+                }
+            return {
+                "successful": False,
+                "data": {},
+                "error": f"Could not verify message: {error_msg}"
+            }
+
+        # Build the endpoint for permanentDelete
+        if mail_folder_id:
+            endpoint = f"/{user}/mailFolders/{mail_folder_id}/messages/{message_id}/permanentDelete"
+        else:
+            endpoint = f"/{user}/messages/{message_id}/permanentDelete"
+
+        # POST to permanentDelete (returns 204 No Content on success)
+        client.post(endpoint)
+
+        deleted_subject = message_info.get("subject", "Unknown")
+
+        return {
+            "successful": True,
+            "data": {
+                "message": "Message permanently deleted (unrecoverable)",
+                "deleted_subject": deleted_subject
+            }
+        }
+
+    except Exception as e:
+        return {
+            "successful": False,
+            "data": {},
+            "error": str(e)
+        }
+
+
+def query_emails(
+    client,
+    folder: Optional[str] = None,
+    filter: Optional[str] = None,
+    orderby: Optional[str] = None,
+    select: Optional[List[str]] = None,
+    skip: Optional[int] = None,
+    top: Optional[int] = None,
+    user_id: Optional[str] = None
+) -> dict:
+    """
+    Query Outlook emails within a SINGLE folder using OData filters.
+    Build precise server-side filters for dates, read status, importance,
+    subjects, attachments, and conversations. Best for structured queries
+    on message metadata within a specific folder. Returns up to 100 messages
+    per request with pagination support.
+
+    - Searches SINGLE folder only (inbox, sentitems, etc.) - NOT across all folders
+    - For cross-folder/mailbox-wide search: Use search_messages
+    - Server-side filters: dates, importance, isRead, hasAttachments, subjects, conversationId
+    - CRITICAL: Always check response['@odata.nextLink'] for pagination
+    - Limitations: Recipient/body filtering requires search_messages
+
+    Get folder name or ID from list_mail_folders. Common well-known names:
+    'inbox', 'drafts', 'sentitems', 'deleteditems', 'junkemail', 'archive'.
+
+    Filter examples:
+      - "isRead eq false"
+      - "importance eq 'high'"
+      - "hasAttachments eq true"
+      - "receivedDateTime ge 2026-02-01T00:00:00Z"
+      - "contains(subject, 'meeting')"
+
+    Args:
+        client: The OutlookClient instance
+        folder: Folder name or ID. Get from list_mail_folders.
+                Defaults to inbox.
+        filter: OData filter expression
+        orderby: Property to order by (e.g. 'receivedDateTime desc')
+        select: List of properties to select
+        skip: Number of items to skip (pagination)
+        top: Max number of messages to return (max 100)
+        user_id: Optional user ID (defaults to 'me')
+
+    Returns:
+        dict with 'successful', 'data', and optional 'error' fields
+    """
+    try:
+        if not client.is_authenticated():
+            return {
+                "successful": False,
+                "data": {},
+                "error": "Not authenticated. Please authenticate first."
+            }
+
+        # Build query parameters
+        params = {}
+        if filter:
+            params["$filter"] = filter
+        if orderby:
+            params["$orderby"] = orderby
+        if select:
+            params["$select"] = ",".join(select)
+        if skip is not None:
+            params["$skip"] = skip
+        if top is not None:
+            if top > 100:
+                top = 100  # Microsoft Graph max
+            params["$top"] = top
+
+        user = user_id if user_id else "me"
+        folder_name = folder if folder else "inbox"
+        endpoint = f"/{user}/mailFolders/{folder_name}/messages"
+
+        result = client.get(endpoint, params=params if params else None)
+
+        return {
+            "successful": True,
+            "data": result
+        }
+
+    except Exception as e:
+        return {
+            "successful": False,
+            "data": {},
+            "error": str(e)
+        }
+
+
+def send_draft(
+    client,
+    message_id: str,
+    user_id: Optional[str] = None
+) -> dict:
+    """
+    Send an existing draft message. Use after creating a draft (via
+    create_draft) when you want to deliver it to recipients immediately.
+
+    Get message_id from create_draft (the returned 'id'), or from
+    list_messages with folder='drafts' (pick the 'id' field of the
+    draft you want to send).
+
+    Args:
+        client: The OutlookClient instance
+        message_id: The ID of the draft message to send.
+                    Get from create_draft or list_messages (folder='drafts').
+        user_id: Optional user ID (defaults to 'me')
+
+    Returns:
+        dict with 'successful', 'data', and optional 'error' fields
+    """
+    try:
+        if not client.is_authenticated():
+            return {
+                "successful": False,
+                "data": {},
+                "error": "Not authenticated. Please authenticate first."
+            }
+
+        user = user_id if user_id else "me"
+
+        # Verify the message is a draft first
+        check_endpoint = f"/{user}/messages/{message_id}?$select=id,subject,isDraft"
+        try:
+            message_info = client.get(check_endpoint)
+            if not message_info.get("isDraft", False):
+                return {
+                    "successful": False,
+                    "data": {},
+                    "error": "This message is not a draft. Only draft messages can be sent. Get a draft message_id from create_draft or list_messages (folder='drafts')."
+                }
+        except Exception as check_error:
+            error_msg = str(check_error)
+            if "404" in error_msg or "Not Found" in error_msg:
+                return {
+                    "successful": False,
+                    "data": {},
+                    "error": f"Message not found. The message_id '{message_id}' does not exist. Get a valid draft message_id from create_draft or list_messages (folder='drafts')."
+                }
+            # Continue and let the API handle it
+            pass
+
+        endpoint = f"/{user}/messages/{message_id}/send"
+
+        # POST to send (returns 202 Accepted with no content on success)
+        client.post(endpoint)
+
+        subject = message_info.get("subject", "Unknown") if 'message_info' in dir() else "Unknown"
+
+        return {
+            "successful": True,
+            "data": {
+                "message": "Draft sent successfully",
+                "sent_subject": subject
+            }
+        }
+
+    except Exception as e:
+        return {
+            "successful": False,
+            "data": {},
+            "error": str(e)
         }
 
 

@@ -277,6 +277,74 @@ def create_event(
         }
 
 
+def decline_event(
+    client,
+    event_id: str,
+    comment: Optional[str] = None,
+    sendResponse: Optional[bool] = None,
+    proposedNewTime: Optional[dict] = None,
+    user_id: Optional[str] = None
+) -> dict:
+    """
+    Decline an invitation to a calendar event. Use when the user wants to
+    decline a meeting or event invitation. The API returns 202 Accepted with
+    no content on success.
+
+    Get event_id from list_events or get_event (pick the 'id' field of the
+    event you want to decline).
+
+    Args:
+        client: The OutlookClient instance
+        event_id: The ID of the event to decline.
+                  Get from list_events or get_event.
+        comment: Optional message to include with the decline response.
+        sendResponse: Whether to send a response to the organizer (default True).
+        proposedNewTime: Optional proposed new time object with
+                         {"dateTime": "ISO8601", "timeZone": "zone"} for both
+                         start and end. Example:
+                         {"start": {"dateTime": "2026-02-15T10:00:00", "timeZone": "UTC"},
+                          "end": {"dateTime": "2026-02-15T11:00:00", "timeZone": "UTC"}}
+        user_id: Optional user ID (defaults to 'me')
+
+    Returns:
+        dict with 'successful', 'data', and optional 'error' fields
+    """
+    try:
+        if not client.is_authenticated():
+            return {
+                "successful": False,
+                "data": {},
+                "error": "Not authenticated. Please authenticate first."
+            }
+
+        user = user_id if user_id else "me"
+        endpoint = f"/{user}/events/{event_id}/decline"
+
+        # Build the decline payload
+        decline_data = {}
+        if comment is not None:
+            decline_data["comment"] = comment
+        if sendResponse is not None:
+            decline_data["sendResponse"] = sendResponse
+        if proposedNewTime is not None:
+            decline_data["proposedNewTime"] = proposedNewTime
+
+        # Make the API call (returns 202 with no content on success)
+        client.post(endpoint, json=decline_data if decline_data else None)
+
+        return {
+            "successful": True,
+            "data": {"message": "Event declined successfully"}
+        }
+
+    except Exception as e:
+        return {
+            "successful": False,
+            "data": {},
+            "error": str(e)
+        }
+
+
 def delete_event(
     client,
     event_id: str,
@@ -473,6 +541,178 @@ def update_calendar_event(
             "data": result
         }
         
+    except Exception as e:
+        return {
+            "successful": False,
+            "data": {},
+            "error": str(e)
+        }
+
+
+def find_meeting_times(
+    client,
+    attendees: Optional[List[dict]] = None,
+    timeConstraint: Optional[dict] = None,
+    locationConstraint: Optional[dict] = None,
+    meetingDuration: Optional[str] = None,
+    maxCandidates: Optional[int] = None,
+    isOrganizerOptional: Optional[bool] = None,
+    returnSuggestionReasons: Optional[bool] = None,
+    minimumAttendeePercentage: Optional[float] = None,
+    prefer_timezone: Optional[str] = None,
+    user_id: Optional[str] = None
+) -> dict:
+    """
+    Suggests meeting times based on organizer and attendee availability,
+    time constraints, and duration requirements. Use when you need to find
+    optimal meeting slots across multiple participants' schedules.
+
+    Get attendee email addresses from list_contacts or get_contact.
+    Use get_supported_time_zones to find valid timezone values.
+
+    Args:
+        client: The OutlookClient instance
+        attendees: Optional list of attendee objects. Each should have
+                   {"emailAddress": {"address": "email", "name": "Name"}, "type": "required"}.
+                   Get emails from list_contacts.
+        timeConstraint: Optional time window object:
+                        {"activityDomain": "work", "timeSlots": [{"start": {"dateTime": "...", "timeZone": "..."}, "end": {"dateTime": "...", "timeZone": "..."}}]}
+        locationConstraint: Optional location constraint object.
+        meetingDuration: Optional duration in ISO 8601 format (e.g. "PT1H" for 1 hour, "PT30M" for 30 min).
+        maxCandidates: Optional max number of suggestions to return.
+        isOrganizerOptional: Whether the organizer is optional (default false).
+        returnSuggestionReasons: Whether to return reasons for each suggestion.
+        minimumAttendeePercentage: Minimum % of attendees that must be available (0-100).
+        prefer_timezone: Preferred timezone for the response. Get from get_supported_time_zones.
+        user_id: Optional user ID (defaults to 'me')
+
+    Returns:
+        dict with 'successful', 'data', and optional 'error' fields
+    """
+    try:
+        if not client.is_authenticated():
+            return {
+                "successful": False,
+                "data": {},
+                "error": "Not authenticated. Please authenticate first."
+            }
+
+        user = user_id if user_id else "me"
+
+        # Build the request payload
+        payload = {}
+
+        if attendees is not None:
+            payload["attendees"] = attendees
+        if timeConstraint is not None:
+            payload["timeConstraint"] = timeConstraint
+        if locationConstraint is not None:
+            payload["locationConstraint"] = locationConstraint
+        if meetingDuration is not None:
+            payload["meetingDuration"] = meetingDuration
+        if maxCandidates is not None:
+            payload["maxCandidates"] = maxCandidates
+        if isOrganizerOptional is not None:
+            payload["isOrganizerOptional"] = isOrganizerOptional
+        if returnSuggestionReasons is not None:
+            payload["returnSuggestionReasons"] = returnSuggestionReasons
+        if minimumAttendeePercentage is not None:
+            payload["minimumAttendeePercentage"] = minimumAttendeePercentage
+
+        # Set preferred timezone via header
+        headers = {}
+        if prefer_timezone:
+            headers["Prefer"] = f'outlook.timezone="{prefer_timezone}"'
+
+        endpoint = f"/{user}/findMeetingTimes"
+
+        result = client.post(endpoint, json=payload, headers=headers if headers else None)
+
+        return {
+            "successful": True,
+            "data": result
+        }
+
+    except Exception as e:
+        return {
+            "successful": False,
+            "data": {},
+            "error": str(e)
+        }
+
+
+def get_calendar_view(
+    client,
+    start_datetime: str,
+    end_datetime: str,
+    calendar_id: Optional[str] = None,
+    select: Optional[List[str]] = None,
+    top: Optional[int] = None,
+    timezone: Optional[str] = None,
+    user_id: Optional[str] = None
+) -> dict:
+    """
+    Get events ACTIVE during a time window (includes multi-day events).
+    Use for "what's on my calendar today/this week" or availability checks.
+    Returns events overlapping the time range.
+
+    For keyword search or filters by category, use list_events instead.
+
+    Get calendar_id from list_calendars if you want a specific calendar's view.
+    Use get_supported_time_zones for valid timezone values.
+
+    Args:
+        client: The OutlookClient instance
+        start_datetime: Start of time range (ISO 8601, e.g. "2026-02-12T00:00:00")
+        end_datetime: End of time range (ISO 8601, e.g. "2026-02-12T23:59:59")
+        calendar_id: Optional calendar ID. Get from list_calendars. Defaults to primary calendar.
+        select: Optional list of properties to select.
+        top: Optional max number of events to return.
+        timezone: Optional timezone for the response. Get from get_supported_time_zones.
+        user_id: Optional user ID (defaults to 'me')
+
+    Returns:
+        dict with 'successful', 'data', and optional 'error' fields
+    """
+    try:
+        if not client.is_authenticated():
+            return {
+                "successful": False,
+                "data": {},
+                "error": "Not authenticated. Please authenticate first."
+            }
+
+        user = user_id if user_id else "me"
+
+        # Build query parameters
+        params = {
+            "startDateTime": start_datetime,
+            "endDateTime": end_datetime
+        }
+
+        if select:
+            params["$select"] = ",".join(select)
+        if top is not None:
+            params["$top"] = top
+
+        # Build endpoint based on whether a specific calendar is requested
+        if calendar_id:
+            endpoint = f"/{user}/calendars/{calendar_id}/calendarView"
+        else:
+            endpoint = f"/{user}/calendarView"
+
+        # Set preferred timezone via header
+        headers = {}
+        if timezone:
+            headers["Prefer"] = f'outlook.timezone="{timezone}"'
+
+        result = client.get(endpoint, params=params, headers=headers if headers else None)
+
+        return {
+            "successful": True,
+            "data": result
+        }
+
     except Exception as e:
         return {
             "successful": False,

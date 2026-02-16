@@ -236,6 +236,148 @@ def list_reminders(
         }
 
 
+def list_child_mail_folders(
+    client,
+    parent_folder_id: str,
+    filter: Optional[str] = None,
+    include_hidden_folders: Optional[bool] = None,
+    select: Optional[List[str]] = None,
+    top: Optional[int] = None,
+    user_id: Optional[str] = None
+) -> dict:
+    """
+    List subfolders (childFolders) under a specified Outlook mail folder.
+    Use when navigating nested folder hierarchies or checking if a folder
+    has subfolders.
+
+    Get parent_folder_id from list_mail_folders (pick the 'id' field of
+    the parent folder you want to explore). You can also use well-known
+    folder names like 'inbox', 'drafts', 'sentitems', 'deleteditems'.
+
+    Args:
+        client: The OutlookClient instance
+        parent_folder_id: The ID of the parent mail folder.
+                          Get from list_mail_folders (use the 'id' field)
+                          or a well-known name like 'inbox'.
+        filter: Optional OData filter expression
+        include_hidden_folders: Whether to include hidden folders
+        select: Optional list of properties to select
+        top: Optional max number of folders to return
+        user_id: Optional user ID (defaults to 'me')
+
+    Returns:
+        dict with 'successful', 'data', and optional 'error' fields
+    """
+    try:
+        if not client.is_authenticated():
+            return {
+                "successful": False,
+                "data": {},
+                "error": "Not authenticated. Please authenticate first."
+            }
+
+        # Build query parameters
+        params = {}
+        if filter:
+            params["$filter"] = filter
+        if include_hidden_folders:
+            params["includeHiddenFolders"] = "true"
+        if select:
+            params["$select"] = ",".join(select)
+        if top is not None:
+            params["$top"] = top
+
+        user = user_id if user_id else "me"
+        endpoint = f"/{user}/mailFolders/{parent_folder_id}/childFolders"
+
+        result = client.get(endpoint, params=params if params else None)
+
+        return {
+            "successful": True,
+            "data": result
+        }
+
+    except Exception as e:
+        return {
+            "successful": False,
+            "data": {},
+            "error": str(e)
+        }
+
+
+def list_mail_folder_messages(
+    client,
+    mail_folder_id: str,
+    filter: Optional[str] = None,
+    orderby: Optional[str] = None,
+    select: Optional[List[str]] = None,
+    skip: Optional[int] = None,
+    top: Optional[int] = None,
+    user_id: Optional[str] = None
+) -> dict:
+    """
+    List messages from a specific mail folder including subfolders.
+    Use when you need to retrieve messages from a particular folder or
+    subfolder by its ID or well-known name.
+
+    Get mail_folder_id from list_mail_folders (pick the 'id' field of the
+    folder you want to read) or list_child_mail_folders for subfolders.
+    You can also use well-known names like 'inbox', 'drafts', 'sentitems',
+    'deleteditems'.
+
+    Args:
+        client: The OutlookClient instance
+        mail_folder_id: The ID of the mail folder.
+                        Get from list_mail_folders or list_child_mail_folders.
+        filter: Optional OData filter expression
+        orderby: Optional property to order by (e.g. 'receivedDateTime desc')
+        select: Optional list of properties to select
+        skip: Optional number of items to skip
+        top: Optional max number of messages to return
+        user_id: Optional user ID (defaults to 'me')
+
+    Returns:
+        dict with 'successful', 'data', and optional 'error' fields
+    """
+    try:
+        if not client.is_authenticated():
+            return {
+                "successful": False,
+                "data": {},
+                "error": "Not authenticated. Please authenticate first."
+            }
+
+        # Build query parameters
+        params = {}
+        if filter:
+            params["$filter"] = filter
+        if orderby:
+            params["$orderby"] = orderby
+        if select:
+            params["$select"] = ",".join(select)
+        if skip is not None:
+            params["$skip"] = skip
+        if top is not None:
+            params["$top"] = top
+
+        user = user_id if user_id else "me"
+        endpoint = f"/{user}/mailFolders/{mail_folder_id}/messages"
+
+        result = client.get(endpoint, params=params if params else None)
+
+        return {
+            "successful": True,
+            "data": result
+        }
+
+    except Exception as e:
+        return {
+            "successful": False,
+            "data": {},
+            "error": str(e)
+        }
+
+
 def list_contacts(
     client,
     contact_folder_id: Optional[str] = None,

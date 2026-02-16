@@ -71,6 +71,54 @@ def get_master_categories(
         }
 
 
+def delete_master_category(
+    client,
+    category_id: str,
+    user_id: Optional[str] = None
+) -> dict:
+    """
+    Delete a category from the user's master category list.
+    Use when removing unused or obsolete categories from the mailbox.
+
+    Get category_id from get_master_categories (pick the 'id' field of the
+    category you want to delete).
+
+    Args:
+        client: The OutlookClient instance
+        category_id: The ID of the category to delete.
+                     Get from get_master_categories (use the 'id' field).
+        user_id: Optional user ID (defaults to 'me')
+
+    Returns:
+        dict with 'successful', 'data', and optional 'error' fields
+    """
+    try:
+        if not client.is_authenticated():
+            return {
+                "successful": False,
+                "data": {},
+                "error": "Not authenticated. Please authenticate first."
+            }
+
+        user = user_id if user_id else "me"
+        endpoint = f"/{user}/outlook/masterCategories/{category_id}"
+
+        # DELETE returns 204 No Content on success
+        client.delete(endpoint)
+
+        return {
+            "successful": True,
+            "data": {"message": f"Category '{category_id}' deleted successfully"}
+        }
+
+    except Exception as e:
+        return {
+            "successful": False,
+            "data": {},
+            "error": str(e)
+        }
+
+
 def create_master_category(
     client,
     displayName: str,
