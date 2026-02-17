@@ -59,7 +59,8 @@ from .list_tools import (
     list_mail_folders,
     list_messages,
     list_outlook_attachments,
-    list_reminders
+    list_reminders,
+    list_files
 )
 from .user_tools import list_users
 from .teams_tools import (
@@ -128,6 +129,7 @@ __all__ = [
     "list_outlook_attachments",
     "list_reminders",
     "list_users",
+    "list_files",
     "permanent_delete_message",
     "pin_message",
     "query_emails",

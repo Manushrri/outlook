@@ -2,7 +2,11 @@
 Microsoft Outlook List Tools
 """
 
+import os
+from pathlib import Path
 from typing import Optional, List
+
+from src.workspace_utils import get_workspace, resolve_workspace_file, to_filename, is_workspace_configured
 
 
 def list_calendars(
@@ -700,6 +704,131 @@ def list_messages(
         return {
             "successful": True,
             "data": result
+        }
+        
+    except Exception as e:
+        return {
+            "successful": False,
+            "data": {},
+            "error": str(e)
+        }
+
+
+def list_files(
+    client,
+    subfolder: Optional[str] = None,
+    include_hidden: Optional[bool] = None
+) -> dict:
+    """
+    List files and folders in the workspace directory (WORKSPACE_PATH).
+    Use when you need to see what files are available before attaching them to emails or events.
+    
+    Args:
+        client: The OutlookClient instance (not used, but required for tool signature)
+        subfolder: Optional subfolder path (relative to workspace root) to list. 
+                   Example: "attachments" or "documents/reports". 
+                   If omitted, lists the root workspace directory.
+        include_hidden: Whether to include hidden files (files starting with '.'). Default: False.
+    
+    Returns:
+        dict with 'successful', 'data' (containing files, folders, and counts), and optional 'error' fields
+    """
+    try:
+        # Check if workspace is configured
+        if not is_workspace_configured():
+            return {
+                "successful": False,
+                "data": {},
+                "error": "WORKSPACE_PATH is not configured. Set WORKSPACE_PATH environment variable to enable file listing."
+            }
+        
+        # Get workspace root
+        workspace_root = get_workspace()
+        target_dir = workspace_root
+        
+        # If subfolder provided, resolve it (validates it's within workspace)
+        if subfolder:
+            try:
+                target_dir = resolve_workspace_file(subfolder, must_exist=True)
+                if not os.path.isdir(target_dir):
+                    return {
+                        "successful": False,
+                        "data": {},
+                        "error": f"'{subfolder}' is not a directory or does not exist in workspace."
+                    }
+            except (PermissionError, ValueError, FileNotFoundError) as e:
+                return {
+                    "successful": False,
+                    "data": {},
+                    "error": str(e)
+                }
+        
+        # List directory contents
+        files = []
+        folders = []
+        
+        try:
+            entries = os.listdir(target_dir)
+        except PermissionError:
+            return {
+                "successful": False,
+                "data": {},
+                "error": f"Permission denied: Cannot read directory '{subfolder or 'workspace root'}'"
+            }
+        except Exception as e:
+            return {
+                "successful": False,
+                "data": {},
+                "error": f"Error listing directory: {str(e)}"
+            }
+        
+        # Process each entry
+        for entry in sorted(entries):
+            # Skip hidden files if not requested
+            if not include_hidden and entry.startswith("."):
+                continue
+            
+            entry_path = os.path.join(target_dir, entry)
+            rel_path = to_filename(entry_path)
+            
+            if os.path.isdir(entry_path):
+                folders.append({
+                    "name": rel_path + "/",
+                    "type": "folder"
+                })
+            else:
+                try:
+                    file_size = os.path.getsize(entry_path)
+                    file_size_mb = round(file_size / (1024 * 1024), 2)
+                    
+                    # Detect file type from extension
+                    ext = os.path.splitext(entry)[1].lower()
+                    file_type = ext[1:] if ext else "unknown"
+                    
+                    files.append({
+                        "name": rel_path,
+                        "size_bytes": file_size,
+                        "size_mb": file_size_mb,
+                        "type": file_type,
+                        "extension": ext
+                    })
+                except Exception as e:
+                    # If we can't read file info, still include it but mark as error
+                    files.append({
+                        "name": rel_path,
+                        "error": f"Could not read file info: {str(e)}"
+                    })
+        
+        return {
+            "successful": True,
+            "data": {
+                "path": subfolder if subfolder else "workspace root",
+                "files": files,
+                "folders": folders,
+                "file_count": len(files),
+                "folder_count": len(folders),
+                "total_items": len(files) + len(folders)
+            }
         }
         
     except Exception as e:

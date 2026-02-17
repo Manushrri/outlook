@@ -6,6 +6,10 @@ env/
 
 # Token cache
 .token_cache.json
+token.json
+
+# Workspace files (user data)
+workspace/
 
 # Python
 __pycache__/

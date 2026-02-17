@@ -7,6 +7,8 @@ import mimetypes
 from pathlib import Path
 from typing import Optional, List
 
+from src.workspace_utils import resolve_workspace_file
+
 
 def add_mail_attachment(
     client,
@@ -50,18 +52,13 @@ def add_mail_attachment(
                 "data": {},
                 "error": "Not authenticated. Please authenticate first."
             }
-        
-        # Handle file_path: read file and encode to base64
+
+        # Handle file_path: read file and encode to base64 (restricted to WORKSPACE_PATH)
         if file_path:
             try:
-                file_path_obj = Path(file_path)
-                if not file_path_obj.exists():
-                    return {
-                        "successful": False,
-                        "data": {},
-                        "error": f"File not found: {file_path}"
-                    }
-                
+                resolved = resolve_workspace_file(file_path, must_exist=True)
+                file_path_obj = Path(resolved)
+
                 # Check file size (3 MB limit)
                 file_size = file_path_obj.stat().st_size
                 if file_size > 3 * 1024 * 1024:  # 3 MB
@@ -70,22 +67,28 @@ def add_mail_attachment(
                         "data": {},
                         "error": f"File size ({file_size / 1024 / 1024:.2f} MB) exceeds 3 MB limit. Use a smaller file or upload via other method."
                     }
-                
+
                 # Read file and encode to base64
                 with open(file_path_obj, 'rb') as f:
                     file_content = f.read()
                     contentBytes = base64.b64encode(file_content).decode('utf-8')
-                
+
                 # Auto-detect content type if not provided
                 if not contentType:
                     detected_type, _ = mimetypes.guess_type(str(file_path_obj))
                     if detected_type:
                         contentType = detected_type
-                
+
                 # Use file name if name not provided
                 if not name or name.strip() == "":
                     name = file_path_obj.name
-                    
+
+            except (PermissionError, ValueError, FileNotFoundError) as sec_err:
+                return {
+                    "successful": False,
+                    "data": {},
+                    "error": str(sec_err),
+                }
             except Exception as file_error:
                 return {
                     "successful": False,
@@ -259,6 +262,10 @@ def create_draft(
     Creates an Outlook email draft with subject, body, recipients, and an optional attachment.
     Supports creating drafts as part of existing conversation threads.
     
+    For attachments, you can provide:
+    - attachment dict with file_path (recommended): {"file_path": "attachments/report.pdf", "name": "report.pdf", "contentType": "application/pdf"}
+    - attachment dict with contentBytes: {"name": "report.pdf", "contentType": "application/pdf", "contentBytes": "<base64>"}
+    
     Args:
         client: The OutlookClient instance
         subject: The subject of the email
@@ -268,7 +275,7 @@ def create_draft(
         bcc_recipients: Optional list of BCC email addresses
         is_html: Whether body is HTML
         conversation_id: Optional conversation ID for threading
-        attachment: Optional attachment dict with name, contentType, contentBytes
+        attachment: Optional attachment dict with name, contentType, and either file_path (relative to WORKSPACE_PATH) or contentBytes
     
     Returns:
         dict with 'successful', 'data', and optional 'error' fields
@@ -313,11 +320,65 @@ def create_draft(
         # Add attachment if provided
         if attachment and result.get("id"):
             message_id = result["id"]
+            attachment_name = attachment.get("name")
+            attachment_content_type = attachment.get("contentType", "application/octet-stream")
+            attachment_content_bytes = attachment.get("contentBytes")
+            attachment_file_path = attachment.get("file_path")
+            
+            # Handle file_path: read file and encode to base64 (restricted to WORKSPACE_PATH)
+            if attachment_file_path:
+                try:
+                    resolved = resolve_workspace_file(attachment_file_path, must_exist=True)
+                    file_path_obj = Path(resolved)
+                    
+                    # Read file and encode to base64
+                    with open(file_path_obj, 'rb') as f:
+                        file_content = f.read()
+                        attachment_content_bytes = base64.b64encode(file_content).decode('utf-8')
+                    
+                    # Auto-detect content type if not provided
+                    if not attachment_content_type or attachment_content_type == "application/octet-stream":
+                        detected_type, _ = mimetypes.guess_type(str(file_path_obj))
+                        if detected_type:
+                            attachment_content_type = detected_type
+                    
+                    # Use file name if name not provided
+                    if not attachment_name or attachment_name.strip() == "":
+                        attachment_name = file_path_obj.name
+                        
+                except (PermissionError, ValueError, FileNotFoundError) as sec_err:
+                    return {
+                        "successful": False,
+                        "data": {},
+                        "error": f"Attachment file error: {str(sec_err)}",
+                    }
+                except Exception as file_error:
+                    return {
+                        "successful": False,
+                        "data": {},
+                        "error": f"Error reading attachment file: {str(file_error)}"
+                    }
+            
+            # Validate that we have required fields
+            if not attachment_name:
+                return {
+                    "successful": False,
+                    "data": {},
+                    "error": "Attachment must have a 'name' field, or provide 'file_path' to auto-detect name."
+                }
+            
+            if not attachment_content_bytes:
+                return {
+                    "successful": False,
+                    "data": {},
+                    "error": "Attachment must have either 'file_path' (relative to WORKSPACE_PATH) or 'contentBytes' (base64-encoded)."
+                }
+            
             attachment_data = {
                 "@odata.type": "#microsoft.graph.fileAttachment",
-                "name": attachment.get("name"),
-                "contentType": attachment.get("contentType", "application/octet-stream"),
-                "contentBytes": attachment.get("contentBytes")
+                "name": attachment_name,
+                "contentType": attachment_content_type,
+                "contentBytes": attachment_content_bytes
             }
             attachment_endpoint = f"/me/messages/{message_id}/attachments"
             client.post(attachment_endpoint, json=attachment_data)
@@ -1359,6 +1420,10 @@ def send_email(
     Sends an email with subject, body, recipients, and an optional attachment via Microsoft Graph API.
     Attachments require a non-empty file with valid name and mimetype.
     
+    For attachments, you can provide:
+    - attachment dict with file_path (recommended): {"file_path": "attachments/report.pdf", "name": "report.pdf", "contentType": "application/pdf"}
+    - attachment dict with contentBytes: {"name": "report.pdf", "contentType": "application/pdf", "contentBytes": "<base64>"}
+    
     Args:
         client: The OutlookClient instance
         subject: The subject of the email
@@ -1368,7 +1433,7 @@ def send_email(
         cc_emails: Optional list of CC email addresses
         bcc_emails: Optional list of BCC email addresses
         is_html: Whether body is HTML (default: False)
-        attachment: Optional attachment dict with name, contentType, contentBytes
+        attachment: Optional attachment dict with name, contentType, and either file_path (relative to WORKSPACE_PATH) or contentBytes
         save_to_sent_items: Whether to save the email to Sent Items (default: True)
         user_id: Optional user ID (defaults to 'me')
     
@@ -1414,12 +1479,66 @@ def send_email(
         
         # Add attachment if provided
         if attachment:
+            attachment_name = attachment.get("name")
+            attachment_content_type = attachment.get("contentType", "application/octet-stream")
+            attachment_content_bytes = attachment.get("contentBytes")
+            attachment_file_path = attachment.get("file_path")
+            
+            # Handle file_path: read file and encode to base64 (restricted to WORKSPACE_PATH)
+            if attachment_file_path:
+                try:
+                    resolved = resolve_workspace_file(attachment_file_path, must_exist=True)
+                    file_path_obj = Path(resolved)
+                    
+                    # Read file and encode to base64
+                    with open(file_path_obj, 'rb') as f:
+                        file_content = f.read()
+                        attachment_content_bytes = base64.b64encode(file_content).decode('utf-8')
+                    
+                    # Auto-detect content type if not provided
+                    if not attachment_content_type or attachment_content_type == "application/octet-stream":
+                        detected_type, _ = mimetypes.guess_type(str(file_path_obj))
+                        if detected_type:
+                            attachment_content_type = detected_type
+                    
+                    # Use file name if name not provided
+                    if not attachment_name or attachment_name.strip() == "":
+                        attachment_name = file_path_obj.name
+                        
+                except (PermissionError, ValueError, FileNotFoundError) as sec_err:
+                    return {
+                        "successful": False,
+                        "data": {},
+                        "error": f"Attachment file error: {str(sec_err)}",
+                    }
+                except Exception as file_error:
+                    return {
+                        "successful": False,
+                        "data": {},
+                        "error": f"Error reading attachment file: {str(file_error)}"
+                    }
+            
+            # Validate that we have required fields
+            if not attachment_name:
+                return {
+                    "successful": False,
+                    "data": {},
+                    "error": "Attachment must have a 'name' field, or provide 'file_path' to auto-detect name."
+                }
+            
+            if not attachment_content_bytes:
+                return {
+                    "successful": False,
+                    "data": {},
+                    "error": "Attachment must have either 'file_path' (relative to WORKSPACE_PATH) or 'contentBytes' (base64-encoded)."
+                }
+            
             message["attachments"] = [
                 {
                     "@odata.type": "#microsoft.graph.fileAttachment",
-                    "name": attachment.get("name"),
-                    "contentType": attachment.get("contentType", "application/octet-stream"),
-                    "contentBytes": attachment.get("contentBytes")
+                    "name": attachment_name,
+                    "contentType": attachment_content_type,
+                    "contentBytes": attachment_content_bytes
                 }
             ]
         

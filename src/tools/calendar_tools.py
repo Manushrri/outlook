@@ -6,6 +6,8 @@ import base64
 import os
 from typing import Optional, Literal, List
 
+from src.workspace_utils import resolve_workspace_file
+
 
 def create_calendar(
     client,
@@ -115,19 +117,28 @@ def add_event_attachment(
             "name": name
         }
         
+        # Normalize empty strings to None
+        file_path = file_path.strip() if file_path and file_path.strip() else None
+        text_content = text_content.strip() if text_content and text_content.strip() else None
+        contentBytes = contentBytes.strip() if contentBytes and contentBytes.strip() else None
+        
         # Handle contentBytes - priority: file_path > text_content > contentBytes
         final_content_bytes = None
         
-        if file_path is not None:
-            # Read file and encode to Base64
-            if not os.path.exists(file_path):
+        if file_path:
+            # Resolve file safely inside WORKSPACE_PATH
+            try:
+                resolved_path = resolve_workspace_file(file_path, must_exist=True)
+            except (PermissionError, ValueError, FileNotFoundError) as e:
                 return {
                     "successful": False,
                     "data": {},
-                    "error": f"File not found: {file_path}"
+                    "error": str(e),
                 }
+
+            # Read file and encode to Base64
             try:
-                with open(file_path, "rb") as f:
+                with open(resolved_path, "rb") as f:
                     file_content = f.read()
                 final_content_bytes = base64.b64encode(file_content).decode("utf-8")
             except Exception as file_error:
@@ -136,16 +147,31 @@ def add_event_attachment(
                     "data": {},
                     "error": f"Error reading file: {str(file_error)}"
                 }
-        elif text_content is not None:
+        elif text_content:
             # Encode plain text to Base64
             final_content_bytes = base64.b64encode(text_content.encode("utf-8")).decode("utf-8")
-        elif contentBytes is not None:
+        elif contentBytes:
             # Use provided Base64 content directly
             final_content_bytes = contentBytes
         
-        if final_content_bytes is not None:
+        # Validate required fields based on attachment type
+        if odata_type == "#microsoft.graph.fileAttachment":
+            # File attachments require contentBytes
+            if not final_content_bytes:
+                return {
+                    "successful": False,
+                    "data": {},
+                    "error": "For file attachments, you must provide one of: file_path (path to file), text_content (plain text to encode), or contentBytes (pre-encoded Base64)."
+                }
             attachment_data["contentBytes"] = final_content_bytes
-        if item is not None:
+        elif odata_type == "#microsoft.graph.itemAttachment":
+            # Item attachments require item
+            if not item:
+                return {
+                    "successful": False,
+                    "data": {},
+                    "error": "For item attachments, you must provide the 'item' field with the item data."
+                }
             attachment_data["item"] = item
         
         # Determine the endpoint

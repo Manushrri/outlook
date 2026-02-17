@@ -134,13 +134,17 @@
     {
       "id": "create_attachment_upload_session",
       "target": "src.tools.attachment_tools:create_attachment_upload_session",
-      "description": "Create an upload session for large (>3 MB) message attachments. Use when you need to upload attachments in chunks instead of a single request. Get message_id from list_messages (folder='drafts'), search_messages, or create_draft (the returned 'id'). The message must be a draft.",
+      "description": "Create an upload session for large (>3 MB) message attachments. Use when you need to upload attachments in chunks instead of a single request. Get message_id from list_messages (folder='drafts'), search_messages, or create_draft (the returned 'id'). The message must be a draft. You can provide either file_path (recommended - auto-detects name and size) or attachmentItem dict.",
       "input_schema": {
         "type": "object",
         "properties": {
           "message_id": {
             "type": "string",
             "description": "The ID of the draft message. Get from list_messages (folder='drafts'), search_messages, or create_draft."
+          },
+          "file_path": {
+            "type": "string",
+            "description": "Path to file relative to WORKSPACE_PATH (recommended). Will auto-detect name and size. Example: 'attachments/large-report.pdf'"
           },
           "attachmentItem": {
             "type": "object",
@@ -159,14 +163,14 @@
               }
             },
             "required": ["attachmentType", "name", "size"],
-            "description": "Attachment metadata. Example: {\"attachmentType\": \"file\", \"name\": \"report.pdf\", \"size\": 5242880}"
+            "description": "Attachment metadata (use if file_path not provided). Example: {\"attachmentType\": \"file\", \"name\": \"report.pdf\", \"size\": 5242880}"
           },
           "user_id": {
             "type": "string",
             "description": "User ID (defaults to 'me')"
           }
         },
-        "required": ["message_id", "attachmentItem"]
+        "required": ["message_id"]
       }
     },
     {
@@ -1154,6 +1158,25 @@
           }
         },
         "required": ["startDateTime", "endDateTime"]
+      }
+    },
+    {
+      "id": "list_files",
+      "target": "src.tools.list_tools:list_files",
+      "description": "List files and folders in the workspace directory (WORKSPACE_PATH). Use when you need to see what files are available before attaching them to emails or events. Files are restricted to the workspace directory for security.",
+      "input_schema": {
+        "type": "object",
+        "properties": {
+          "subfolder": {
+            "type": "string",
+            "description": "Optional subfolder path (relative to workspace root) to list. Example: 'attachments' or 'documents/reports'. If omitted, lists the root workspace directory."
+          },
+          "include_hidden": {
+            "type": "boolean",
+            "description": "Whether to include hidden files (files starting with '.'). Default: false."
+          }
+        },
+        "required": []
       }
     },
     {

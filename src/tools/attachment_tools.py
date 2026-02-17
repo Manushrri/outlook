@@ -3,13 +3,18 @@ Microsoft Outlook Attachment Tools
 """
 
 import base64
+import os
+from pathlib import Path
 from typing import Optional
+
+from src.workspace_utils import resolve_workspace_file, to_filename
 
 
 def create_attachment_upload_session(
     client,
     message_id: str,
-    attachmentItem: dict,
+    attachmentItem: Optional[dict] = None,
+    file_path: Optional[str] = None,
     user_id: Optional[str] = None
 ) -> dict:
     """
@@ -19,19 +24,17 @@ def create_attachment_upload_session(
     Get message_id from list_messages, search_messages (pick the 'id' of a draft
     message), or create_draft (the returned 'id'). The message must be a draft.
 
-    attachmentItem must include:
-      - attachmentType: "file"
-      - name: file name (e.g. "large-report.pdf")
-      - size: total file size in bytes
-
-    Example attachmentItem:
-      {"attachmentType": "file", "name": "report.pdf", "size": 5242880}
+    You can provide either:
+    1. file_path (recommended): Path to file relative to WORKSPACE_PATH - will auto-detect name and size
+    2. attachmentItem dict: {"attachmentType": "file", "name": "report.pdf", "size": 5242880}
 
     Args:
         client: The OutlookClient instance
         message_id: The ID of the draft message to create the upload session for.
                     Get from list_messages (folder='drafts'), search_messages, or create_draft.
-        attachmentItem: Attachment metadata dict with attachmentType, name, and size.
+        attachmentItem: Optional attachment metadata dict with attachmentType, name, and size.
+                        Ignored if file_path is provided.
+        file_path: Optional path to file (relative to WORKSPACE_PATH). If provided, will auto-detect name and size.
         user_id: Optional user ID (defaults to 'me')
 
     Returns:
@@ -45,11 +48,44 @@ def create_attachment_upload_session(
                 "error": "Not authenticated. Please authenticate first."
             }
 
+        # Handle file_path: auto-detect name and size (restricted to WORKSPACE_PATH)
+        if file_path:
+            try:
+                resolved = resolve_workspace_file(file_path, must_exist=True)
+                file_path_obj = Path(resolved)
+                
+                # Get file size
+                file_size = file_path_obj.stat().st_size
+                
+                # Auto-detect name from file
+                file_name = file_path_obj.name
+                
+                # Build attachmentItem from file_path
+                attachmentItem = {
+                    "attachmentType": "file",
+                    "name": file_name,
+                    "size": file_size
+                }
+                
+            except (PermissionError, ValueError, FileNotFoundError) as sec_err:
+                return {
+                    "successful": False,
+                    "data": {},
+                    "error": f"File error: {str(sec_err)}",
+                }
+            except Exception as file_error:
+                return {
+                    "successful": False,
+                    "data": {},
+                    "error": f"Error reading file: {str(file_error)}"
+                }
+
+        # Validate attachmentItem
         if not attachmentItem or not isinstance(attachmentItem, dict):
             return {
                 "successful": False,
                 "data": {},
-                "error": "attachmentItem must be a dict with 'attachmentType', 'name', and 'size'. Example: {\"attachmentType\": \"file\", \"name\": \"report.pdf\", \"size\": 5242880}"
+                "error": "Either provide 'file_path' (relative to WORKSPACE_PATH) or 'attachmentItem' dict with 'attachmentType', 'name', and 'size'. Example: {\"attachmentType\": \"file\", \"name\": \"report.pdf\", \"size\": 5242880}"
             }
 
         required_fields = ["attachmentType", "name", "size"]
@@ -134,16 +170,27 @@ def download_outlook_attachment(
                 "error": "Attachment does not contain downloadable content (contentBytes). It may be a link or embedded item."
             }
         
-        # Decode and save the file
+        # Resolve destination path inside workspace (no absolute paths allowed)
+        try:
+            dest_path = resolve_workspace_file(file_name, must_exist=False)
+        except (PermissionError, ValueError, FileNotFoundError) as e:
+            return {
+                "successful": False,
+                "data": {},
+                "error": str(e),
+            }
+
+        # Decode and save the file securely inside workspace
         content_bytes = base64.b64decode(result["contentBytes"])
-        
-        with open(file_name, "wb") as f:
+
+        with open(dest_path, "wb") as f:
             f.write(content_bytes)
         
         return {
             "successful": True,
             "data": {
-                "file_name": file_name,
+                # Return workspace-relative filename so callers never see full paths
+                "file_name": to_filename(dest_path),
                 "size": len(content_bytes),
                 "content_type": result.get("contentType", "unknown"),
                 "name": result.get("name", file_name)
