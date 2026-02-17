@@ -11,6 +11,8 @@ import msal
 import requests
 from dotenv import load_dotenv
 
+from src.config import settings
+
 load_dotenv()
 
 
@@ -40,7 +42,17 @@ class OutlookClient:
         self.client_secret = os.getenv("OUTLOOK_CLIENT_SECRET")
         # Use the nativeclient redirect URI
         self.redirect_uri = "https://login.microsoftonline.com/common/oauth2/nativeclient"
-        self.token_cache_path = Path(__file__).parent.parent / ".token_cache.json"
+        
+        # Get token cache path from env or use default
+        if settings.token_path:
+            self.token_cache_path = Path(settings.token_path).expanduser().resolve()
+        else:
+            # Default: token.json in project root
+            self.token_cache_path = Path(__file__).parent.parent / "token.json"
+        
+        # Ensure parent directory exists
+        if self.token_cache_path.parent and not self.token_cache_path.parent.exists():
+            self.token_cache_path.parent.mkdir(parents=True, exist_ok=True)
         
         if not self.client_id:
             raise ValueError("OUTLOOK_CLIENT_ID environment variable is required")
@@ -57,7 +69,10 @@ class OutlookClient:
         cache = msal.SerializableTokenCache()
         
         if self.token_cache_path.exists():
-            cache.deserialize(self.token_cache_path.read_text())
+            try:
+                cache.deserialize(self.token_cache_path.read_text(encoding='utf-8'))
+            except Exception as e:
+                print(f"[WARNING] Could not load token cache: {e}")
         
         # Use PublicClientApplication for CLI/MCP apps
         app = msal.PublicClientApplication(
@@ -71,7 +86,13 @@ class OutlookClient:
     def _save_token_cache(self):
         """Save token cache to file."""
         if self.app.token_cache.has_state_changed:
-            self.token_cache_path.write_text(self.app.token_cache.serialize())
+            try:
+                # Ensure parent directory exists
+                if self.token_cache_path.parent and not self.token_cache_path.parent.exists():
+                    self.token_cache_path.parent.mkdir(parents=True, exist_ok=True)
+                self.token_cache_path.write_text(self.app.token_cache.serialize(), encoding='utf-8')
+            except Exception as e:
+                print(f"[WARNING] Could not save token cache: {e}")
     
     def _load_cached_token(self):
         """Try to get token from cache."""

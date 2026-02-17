@@ -38,8 +38,9 @@ microsoft-outlook/
 ├── run_server.py           # Convenience wrapper for src.main
 ├── test_auth.py            # Authentication bootstrap (REQUIRED - run once)
 ├── tools_manifest.json     # Tool definitions for dynamic loading
-├── .token_cache.json       # Saved tokens (auto-generated)
-└── .env                    # Your credentials (create this)
+├── env.example             # Environment variables template (copy to .env)
+├── token.json              # Saved tokens (auto-generated)
+└── .env                    # Your credentials (create from env.example)
 ```
 
 ## Quick Start
@@ -120,7 +121,7 @@ pip install -r requirements.txt
 
 ### 5. Configure Environment
 
-Create `.env` file:
+Create `.env` file (you can copy from `env.example`):
 
 ```env
 # REQUIRED - Application (client) ID from Azure Portal Overview
@@ -129,8 +130,11 @@ OUTLOOK_CLIENT_ID=your-application-client-id-here
 # REQUIRED - Client secret Value (not Secret ID) from Certificates & secrets
 OUTLOOK_CLIENT_SECRET=your-client-secret-value-here
 
-# Optional - Default is already set
+# OPTIONAL - Redirect URI (default is already set)
 OUTLOOK_REDIRECT_URI=https://login.microsoftonline.com/common/oauth2/nativeclient
+
+# OPTIONAL - Token cache file path (default: token.json)
+OUTLOOK_TOKEN_PATH=token.json
 ```
 
 **⚠️ Important:** When copying the client secret, make sure you copy the **Value** column, not the **Secret ID**. The Value is only shown once when you create the secret!
@@ -146,7 +150,7 @@ This will:
 - Show you a code and URL (`https://microsoft.com/devicelogin`)
 - You sign in and enter the code
 - Accept permissions once
-- Save tokens to `.token_cache.json`
+- Save tokens to `token.json` (or custom path via `OUTLOOK_TOKEN_PATH`)
 
 ### 7. Run the Server
 
@@ -221,7 +225,7 @@ python -m src.main
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  STEP 5: Token Saved to .token_cache.json                                   │
+│  STEP 5: Token Saved to token.json (or custom path)                         │
 │                                                                             │
 │  MSAL serializes token cache:                                               │
 │  {                                                                          │
@@ -270,7 +274,7 @@ python -m src.main
 │  Key: When API returns 401, client automatically:                           │
 │       1. Uses refresh_token to get new access_token                         │
 │       2. Retries the original request                                       │
-│       3. Updates .token_cache.json                                          │
+│       3. Updates token.json (or custom path)                                │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -316,7 +320,7 @@ python -m src.main
                                     │
                                     ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│  1. LOAD TOKENS from .token_cache.json                                      │
+│  1. LOAD TOKENS from token.json (or custom path)                            │
 │     - MSAL deserializes cache                                               │
 │     - Extracts access_token and refresh_token                               │
 └─────────────────────────────────────────────────────────────────────────────┘
@@ -695,6 +699,7 @@ update_mailbox_settings
 | `OUTLOOK_CLIENT_ID` | Yes | Azure App Registration **Application (client) ID** from Overview page |
 | `OUTLOOK_CLIENT_SECRET` | Yes | Client secret **Value** (not Secret ID) from Certificates & secrets - copy the Value column, shown only once! |
 | `OUTLOOK_REDIRECT_URI` | No | Default: `https://login.microsoftonline.com/common/oauth2/nativeclient` |
+| `OUTLOOK_TOKEN_PATH` | No | Token cache file path. Default: `token.json` (in project root) |
 
 **⚠️ Important:** When creating a client secret in Azure Portal:
 - Go to **Certificates & secrets** → **New client secret**
@@ -709,7 +714,15 @@ update_mailbox_settings
 | `user_id` | Defaults to `"me"` (current authenticated user) |
 | All scopes | Hard-coded in `src/config.py`, requested automatically |
 
-### Token Storage (.token_cache.json)
+### Token Storage
+
+Tokens are stored in a JSON file. By default, tokens are saved to `token.json` in the project root. You can configure a custom path using the `OUTLOOK_TOKEN_PATH` environment variable in your `.env` file:
+
+```env
+OUTLOOK_TOKEN_PATH=token.json
+```
+
+**Default token file format (token.json or custom path):**
 
 ```json
 {
@@ -735,7 +748,7 @@ update_mailbox_settings
 | `AADSTS65001: The user or administrator has not consented` | Missing API permissions | Add required permissions in Azure Portal and grant consent |
 | `AADSTS700016: Application not found` | Invalid client ID | Double-check `OUTLOOK_CLIENT_ID` in `.env` |
 | `AADSTS70002: The provided client is not supported for this feature. The client application must be marked as 'mobile.'` | Public client flows not enabled | Go to Azure Portal → App Registration → Authentication → Advanced settings → Set "Allow public client flows" to "Yes" → Save |
-| `Authentication expired. Please re-authenticate.` | Refresh token expired | Delete `.token_cache.json` and run `test_auth.py` again |
+| `Authentication expired. Please re-authenticate.` | Refresh token expired | Delete your token file (`token.json` or the file specified in `OUTLOOK_TOKEN_PATH`) and run `test_auth.py` again |
 | `404 Client Error: Not Found` | Invalid message/event ID | Verify the ID exists using `list_messages` or `list_events` |
 | `400 Client Error: Bad Request` | Invalid request format | Check parameter format (e.g., body must be `{"contentType": "text", "content": "..."}`) |
 | `Only draft messages can be updated` | Trying to update received message | Use `list_messages` with `folder="drafts"` to get draft message IDs |

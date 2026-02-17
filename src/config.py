@@ -18,6 +18,7 @@ class Settings:
     client_id: str = os.getenv("OUTLOOK_CLIENT_ID", "")
     client_secret: Optional[str] = os.getenv("OUTLOOK_CLIENT_SECRET")
     redirect_uri: str = os.getenv("OUTLOOK_REDIRECT_URI", "https://login.microsoftonline.com/common/oauth2/nativeclient")
+    token_path: Optional[str] = os.getenv("OUTLOOK_TOKEN_PATH")
     
     # Microsoft Graph API settings
     graph_api_endpoint: str = os.getenv("GRAPH_API_ENDPOINT", "https://graph.microsoft.com/v1.0")
