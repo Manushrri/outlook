@@ -347,7 +347,7 @@ python -m src.main
 
 ---
 
-## Available Tools (64+ total)
+## Available Tools (65+ total)
 
 ### Mail (18 tools)
 | Tool | Description |
@@ -448,6 +448,11 @@ python -m src.main
 | Tool | Description |
 |------|-------------|
 | `list_users` | List users in the organization (admin only) |
+
+### Workspace (1 tool)
+| Tool | Description |
+|------|-------------|
+| `list_files` | List files and folders in the workspace directory (WORKSPACE_PATH). Use to see available files before attaching them to emails or events. Files are restricted to the workspace directory for security. |
 
 ---
 
@@ -688,6 +693,28 @@ update_mailbox_settings
   }
 ```
 
+### List Workspace Files and Attach to Email
+
+```
+// Step 1: List files in workspace
+list_files
+  subfolder: "attachments"
+  include_hidden: false
+
+// Response: { "successful": true, "data": { "files": [...], "folders": [...], "count": 5 } }
+
+// Step 2: Create draft with attachment from workspace
+create_draft
+  subject: "Report attached"
+  body: "Please find the report attached"
+  to_recipients: ["recipient@example.com"]
+  attachment: {
+    "file_path": "attachments/report.pdf"
+  }
+
+// The file_path is relative to WORKSPACE_PATH and will be automatically read and attached
+```
+
 ---
 
 ## Configuration
@@ -700,6 +727,7 @@ update_mailbox_settings
 | `OUTLOOK_CLIENT_SECRET` | Yes | Client secret **Value** (not Secret ID) from Certificates & secrets - copy the Value column, shown only once! |
 | `OUTLOOK_REDIRECT_URI` | No | Default: `https://login.microsoftonline.com/common/oauth2/nativeclient` |
 | `OUTLOOK_TOKEN_PATH` | No | Token cache file path. Default: `token.json` (in project root) |
+| `WORKSPACE_PATH` | No | Workspace directory path for file operations. All file I/O is restricted to this directory for security. If not set, file attachment features are disabled. |
 
 **⚠️ Important:** When creating a client secret in Azure Portal:
 - Go to **Certificates & secrets** → **New client secret**
@@ -738,6 +766,37 @@ OUTLOOK_TOKEN_PATH=token.json
   }
 }
 ```
+
+### Workspace Security
+
+For security, all file operations (attachments, file uploads, downloads) are restricted to a designated workspace directory. This prevents path traversal attacks and ensures files can only be accessed from a controlled location.
+
+**To enable workspace features:**
+
+1. Set `WORKSPACE_PATH` in your `.env` file:
+   ```env
+   WORKSPACE_PATH=./workspace
+   ```
+
+2. Create the workspace directory:
+   ```bash
+   mkdir workspace
+   ```
+
+3. Place files you want to attach in the workspace directory
+
+**Security Features:**
+- Only files within `WORKSPACE_PATH` can be accessed
+- Absolute paths are blocked
+- Path traversal (`../`) is prevented
+- All file paths are validated before access
+
+**Tools that use workspace:**
+- `add_mail_attachment` - Attach files from workspace to emails
+- `add_event_attachment` - Attach files from workspace to calendar events
+- `send_email` / `create_draft` - Attach files when sending/creating emails
+- `download_outlook_attachment` - Download attachments to workspace
+- `list_files` - List files in the workspace directory
 
 ---
 
