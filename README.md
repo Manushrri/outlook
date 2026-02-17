@@ -135,6 +135,10 @@ OUTLOOK_REDIRECT_URI=https://login.microsoftonline.com/common/oauth2/nativeclien
 
 # OPTIONAL - Token cache file path (default: token.json)
 OUTLOOK_TOKEN_PATH=token.json
+
+# OPTIONAL - Workspace path for file operations (default: ./workspace)
+# All file attachments and downloads are restricted to this directory
+WORKSPACE_PATH=./workspace
 ```
 
 **⚠️ Important:** When copying the client secret, make sure you copy the **Value** column, not the **Secret ID**. The Value is only shown once when you create the secret!
