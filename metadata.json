@@ -1,0 +1,740 @@
+{
+  "outlook": {
+    "description": "Microsoft Outlook MCP server for managing emails, calendars, contacts, attachments, folders, rules, and more via natural language using Microsoft Graph API. Supports comprehensive Outlook operations including sending emails, creating events, managing contacts, organizing mail folders, and handling file attachments with workspace security.",
+    "tools": [
+      {
+        "name": "OUTLOOK_ADD_MAIL_ATTACHMENT",
+        "description": "Purpose: Add an attachment to an email message. Use when you have a message id and need to attach a small (<3 MB) file or reference. Get message_id from tools like list_messages or search_messages (then pick a message's id). You can provide either file_path (path to file - recommended) OR contentBytes (base64-encoded content).\nInputs:\n- `message_id` (string, required) – The ID of the message to attach to\n- `name` (string, optional) – The name of the attachment (auto-filled from file_path if not provided)\n- `odata_type` (string, required) – The OData type (e.g., '#microsoft.graph.fileAttachment')\n- `file_path` (string, optional) – Path to the file to attach (recommended - will be automatically encoded to base64). Example: 'C:\\Users\\name\\file.pdf' or './document.docx'\n- `contentBytes` (string, optional) – Base64-encoded content of the file (optional if file_path is provided)\n- `contentId` (string, optional) – Content ID for inline attachments\n- `contentLocation` (string, optional) – Content location URL\n- `contentType` (string, optional) – MIME type of the attachment (auto-detected from file_path if not provided)\n- `isInline` (boolean, optional) – Whether the attachment is inline\n- `item` (object, optional) – Item data for item attachments\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "message_id": "string",
+          "name": "string (optional)",
+          "odata_type": "string",
+          "file_path": "string (optional)",
+          "contentBytes": "string (optional)",
+          "contentId": "string (optional)",
+          "contentLocation": "string (optional)",
+          "contentType": "string (optional)",
+          "isInline": "boolean (optional)",
+          "item": "object (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_BATCH_MOVE_MESSAGES",
+        "description": "Purpose: Batch-move up to 20 Outlook messages to a destination folder in a single Microsoft Graph $batch call. Use when moving multiple messages to avoid per-message move API calls. Get message_ids from list_messages or search_messages (pick the 'id' field of each message). Get destination_id from list_mail_folders (use the folder 'id' or a well-known name like 'inbox', 'drafts', 'deleteditems', 'sentitems').\nInputs:\n- `message_ids` (array of strings, required) – List of message IDs to move (max 20). Get these from list_messages or search_messages.\n- `destination_id` (string, required) – The destination folder ID or well-known name (e.g. 'inbox', 'drafts', 'deleteditems'). Get this from list_mail_folders.\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "message_ids": "array",
+          "destination_id": "string",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_BATCH_UPDATE_MESSAGES",
+        "description": "Purpose: Batch-update up to 20 Outlook messages per call using Microsoft Graph JSON batching. Use when marking multiple messages read/unread or updating other properties to avoid per-message PATCH calls. Get message_id values from list_messages or search_messages (pick the 'id' field of each message you want to update). Each object in the 'updates' array must include a 'message_id' and at least one property to change (e.g. isRead, categories, importance, flag, inferenceClassification).\nInputs:\n- `updates` (array of objects, required) – List of update objects (max 20). Each must have 'message_id' plus at least one property to update.\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "updates": "array",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_CREATE_ATTACHMENT_UPLOAD_SESSION",
+        "description": "Purpose: Create an upload session for large (>3 MB) message attachments. Use when you need to upload attachments in chunks instead of a single request. Get message_id from list_messages (folder='drafts'), search_messages, or create_draft (the returned 'id'). The message must be a draft. You can provide either file_path (recommended - auto-detects name and size) or attachmentItem dict.\nInputs:\n- `message_id` (string, required) – The ID of the draft message. Get from list_messages (folder='drafts'), search_messages, or create_draft.\n- `file_path` (string, optional) – Path to file relative to WORKSPACE_PATH (recommended). Will auto-detect name and size. Example: 'attachments/large-report.pdf'\n- `attachmentItem` (object, optional) – Attachment metadata (use if file_path not provided). Example: {\"attachmentType\": \"file\", \"name\": \"report.pdf\", \"size\": 5242880}\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "message_id": "string",
+          "file_path": "string (optional)",
+          "attachmentItem": "object (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_CREATE_CALENDAR",
+        "description": "Purpose: Create a new calendar in the signed-in user's mailbox. Use when organizing events into a separate calendar.\nInputs:\n- `name` (string, required) – The name of the calendar\n- `color` (string, optional) – Calendar color preset\n- `hexColor` (string, optional) – Hex color code for the calendar\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "name": "string",
+          "color": "string (optional)",
+          "hexColor": "string (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_CREATE_CONTACT_FOLDER",
+        "description": "Purpose: Create a new contact folder in the user's mailbox. Use when needing to organize contacts into custom folders.\nInputs:\n- `displayName` (string, required) – The display name of the contact folder\n- `parentFolderId` (string, optional) – Parent folder ID to create subfolder\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "displayName": "string",
+          "parentFolderId": "string (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_CREATE_EMAIL_RULE",
+        "description": "Purpose: Create email rule filter with conditions and actions.\nInputs:\n- `displayName` (string, required) – The display name of the rule\n- `conditions` (object, required) – The conditions that trigger the rule\n- `actions` (object, required) – The actions to perform when conditions are met\n- `isEnabled` (boolean, optional) – Whether the rule is enabled\n- `sequence` (integer, optional) – The order of the rule in the rule list\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "displayName": "string",
+          "conditions": "object",
+          "actions": "object",
+          "isEnabled": "boolean (optional)",
+          "sequence": "integer (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_CREATE_MAIL_FOLDER",
+        "description": "Purpose: Create a new mail folder or subfolder (child folder). To create a top-level folder, just provide displayName. To create a subfolder, also provide parent_folder_id. Get parent_folder_id from list_mail_folders (pick the 'id' field of the parent folder) or use a well-known name like 'inbox', 'drafts', 'sentitems', 'deleteditems'.\nInputs:\n- `displayName` (string, required) – The display name of the mail folder\n- `parent_folder_id` (string, optional) – Optional parent folder ID to create a subfolder. Get from list_mail_folders or list_child_mail_folders. If omitted, creates a top-level folder.\n- `isHidden` (boolean, optional) – Whether the folder is hidden\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "displayName": "string",
+          "parent_folder_id": "string (optional)",
+          "isHidden": "boolean (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_CREATE_MASTER_CATEGORY",
+        "description": "Purpose: Create a new category in the user's master category list. Use after selecting a unique display name.\nInputs:\n- `displayName` (string, required) – The display name of the category\n- `color` (string, optional) – Color preset (preset0 through preset24)\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "displayName": "string",
+          "color": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_DECLINE_EVENT",
+        "description": "Purpose: Decline an invitation to a calendar event. Use when the user wants to decline a meeting or event invitation. The API returns 202 Accepted with no content on success. Get event_id from list_events or get_event (pick the 'id' field of the event you want to decline).\nInputs:\n- `event_id` (string, required) – The ID of the event to decline. Get from list_events or get_event.\n- `comment` (string, optional) – Optional message to include with the decline response\n- `sendResponse` (boolean, optional) – Whether to send a response to the organizer (default true)\n- `proposedNewTime` (object, optional) – Optional proposed new time. Example: {\"start\": {\"dateTime\": \"2026-02-15T10:00:00\", \"timeZone\": \"UTC\"}, \"end\": {\"dateTime\": \"2026-02-15T11:00:00\", \"timeZone\": \"UTC\"}}\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "event_id": "string",
+          "comment": "string (optional)",
+          "sendResponse": "boolean (optional)",
+          "proposedNewTime": "object (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_DELETE_EMAIL_RULE",
+        "description": "Purpose: Delete an email rule from the user's inbox. Get ruleId from list_email_rules (pick the 'id' field of the rule you want to delete).\nInputs:\n- `ruleId` (string, required) – The ID of the email rule to delete. Get from list_email_rules (use the 'id' field).\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "ruleId": "string"
+        }
+      },
+      {
+        "name": "OUTLOOK_DELETE_MASTER_CATEGORY",
+        "description": "Purpose: Delete a category from the user's master category list. Use when removing unused or obsolete categories from the mailbox. Get category_id from get_master_categories (pick the 'id' field of the category you want to delete).\nInputs:\n- `category_id` (string, required) – The ID of the category to delete. Get from get_master_categories (use the 'id' field).\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "category_id": "string",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_DELETE_MESSAGE",
+        "description": "Purpose: Permanently delete an Outlook email message by its message_id. Use when removing unwanted messages, cleaning up drafts, or performing mailbox maintenance. Get message_id from list_messages or search_messages (pick the 'id' field of the message you want to delete).\nInputs:\n- `message_id` (string, required) – The ID of the message to delete. Get from list_messages or search_messages.\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "message_id": "string",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_DELETE_MAIL_FOLDER",
+        "description": "Purpose: Delete a mail folder from the user's mailbox. Use when you need to remove an existing mail folder. Get folder_id from list_mail_folders (use the id from the folder you want to delete).\nInputs:\n- `folder_id` (string, required) – The ID of the mail folder to delete\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "folder_id": "string",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_FIND_MEETING_TIMES",
+        "description": "Purpose: Suggests meeting times based on organizer and attendee availability, time constraints, and duration requirements. Use when you need to find optimal meeting slots across multiple participants' schedules. Get attendee email addresses from list_contacts or get_contact. Use get_supported_time_zones for valid timezone values.\nInputs:\n- `attendees` (array of objects, optional) – List of attendee objects. Each: {\"emailAddress\": {\"address\": \"email\", \"name\": \"Name\"}, \"type\": \"required\"}. Get emails from list_contacts.\n- `timeConstraint` (object, optional) – Time window: {\"activityDomain\": \"work\", \"timeSlots\": [{\"start\": {\"dateTime\": \"...\", \"timeZone\": \"...\"}, \"end\": {\"dateTime\": \"...\", \"timeZone\": \"...\"}}]}\n- `locationConstraint` (object, optional) – Location constraint object\n- `meetingDuration` (string, optional) – Duration in ISO 8601 format (e.g. 'PT1H' for 1 hour, 'PT30M' for 30 min)\n- `maxCandidates` (integer, optional) – Max number of suggestions to return\n- `isOrganizerOptional` (boolean, optional) – Whether the organizer is optional (default false)\n- `returnSuggestionReasons` (boolean, optional) – Whether to return reasons for each suggestion\n- `minimumAttendeePercentage` (number, optional) – Minimum % of attendees that must be available (0-100)\n- `prefer_timezone` (string, optional) – Preferred timezone. Get from get_supported_time_zones.\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "attendees": "array (optional)",
+          "timeConstraint": "object (optional)",
+          "locationConstraint": "object (optional)",
+          "meetingDuration": "string (optional)",
+          "maxCandidates": "integer (optional)",
+          "isOrganizerOptional": "boolean (optional)",
+          "returnSuggestionReasons": "boolean (optional)",
+          "minimumAttendeePercentage": "string (optional)",
+          "prefer_timezone": "string (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_FORWARD_MESSAGE",
+        "description": "Purpose: Forward an existing email message to new recipients. Use when you need to send an existing email to someone else. Get message_id from list_messages or search_messages (pick the 'id' field of the message you want to forward).\nInputs:\n- `message_id` (string, required) – The ID of the message to forward. Get from list_messages or search_messages.\n- `to_recipients` (array of strings, required) – List of recipient email addresses to forward to\n- `comment` (string, optional) – Optional message to include with the forwarded email\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "message_id": "string",
+          "to_recipients": "array",
+          "comment": "string (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_GET_CALENDAR_VIEW",
+        "description": "Purpose: Get events ACTIVE during a time window (includes multi-day events). Use for 'what's on my calendar today/this week' or availability checks. Returns events overlapping the time range. For keyword search or filters by category, use list_events instead. Get calendar_id from list_calendars if you want a specific calendar's view. Use get_supported_time_zones for valid timezone values.\nInputs:\n- `start_datetime` (string, required) – Start of time range (ISO 8601, e.g. '2026-02-12T00:00:00')\n- `end_datetime` (string, required) – End of time range (ISO 8601, e.g. '2026-02-12T23:59:59')\n- `calendar_id` (string, optional) – Optional calendar ID. Get from list_calendars. Defaults to primary calendar.\n- `select` (array of strings, optional) – List of properties to select\n- `top` (integer, optional) – Max number of events to return\n- `timezone` (string, optional) – Timezone for the response. Get from get_supported_time_zones.\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "start_datetime": "string",
+          "end_datetime": "string",
+          "calendar_id": "string (optional)",
+          "select": "array (optional)",
+          "top": "integer (optional)",
+          "timezone": "string (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_DOWNLOAD_ATTACHMENT",
+        "description": "Purpose: Download a specific file attachment from an email message. The attachment must contain 'contentBytes' (binary data) and not be a link or embedded item. Get message_id from list_messages or search_messages, and attachment_id from list_attachments.\nInputs:\n- `message_id` (string, required) – The ID of the message containing the attachment\n- `attachment_id` (string, required) – The ID of the attachment to download\n- `file_name` (string, required) – The name to save the file as\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "message_id": "string",
+          "attachment_id": "string",
+          "file_name": "string",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_GET_MAILBOX_SETTINGS",
+        "description": "Purpose: Retrieve mailbox settings. Use when you need to view settings such as automatic replies, time zone, and working hours for the signed-in or specified user.\nInputs:\n- `select` (array of strings, optional) – List of properties to select\n- `expand` (array of strings, optional) – List of properties to expand\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "select": "array (optional)",
+          "expand": "array (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_GET_MAIL_DELTA",
+        "description": "Purpose: Retrieve incremental changes (delta) of messages in a mailbox. Use when syncing mailbox updates since last checkpoint. Get folder_id from list_mail_folders if you want delta for a specific folder.\nInputs:\n- `folder_id` (string, optional) – Folder ID to get delta for specific folder\n- `select` (array of strings, optional) – List of properties to select\n- `expand` (array of strings, optional) – List of properties to expand\n- `filter` (string, optional) – OData filter expression\n- `orderby` (array of strings, optional) – List of properties to order by\n- `search` (string, optional) – Search query\n- `top` (integer, optional) – Number of items to return\n- `skip` (integer, optional) – Number of items to skip\n- `count` (boolean, optional) – Whether to include count of items\n- `delta_token` (string, optional) – Token from previous delta call for incremental sync\n- `skip_token` (string, optional) – Token for pagination\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "folder_id": "string (optional)",
+          "select": "array (optional)",
+          "expand": "array (optional)",
+          "filter": "string (optional)",
+          "orderby": "array (optional)",
+          "search": "string (optional)",
+          "top": "integer (optional)",
+          "skip": "integer (optional)",
+          "count": "boolean (optional)",
+          "delta_token": "string (optional)",
+          "skip_token": "string (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_GET_MAIL_TIPS",
+        "description": "Purpose: Retrieve mail tips such as automatic replies and mailbox full status. Use when you need to check recipient status before sending mail.\nInputs:\n- `EmailAddresses` (array of strings, required) – List of email addresses to get mail tips for\n- `MailTipsOptions` (string, required) – Comma-separated mail tip options: automaticReplies, customMailTip, deliveryRestriction, externalMemberCount, mailboxFullStatus, maxMessageSize, moderationStatus, recipientScope, recipientSuggestions, totalMemberCount\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "EmailAddresses": "array",
+          "MailTipsOptions": "string",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_GET_MASTER_CATEGORIES",
+        "description": "Purpose: Retrieve the user's master category list. Use when you need to get all categories defined for the user.\nInputs:\n- `select` (array of strings, optional) – List of properties to select\n- `filter` (string, optional) – OData filter expression\n- `orderby` (array of strings, optional) – List of properties to order by\n- `top` (integer, optional) – Number of items to return\n- `skip` (integer, optional) – Number of items to skip\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "select": "array (optional)",
+          "filter": "string (optional)",
+          "orderby": "array (optional)",
+          "top": "integer (optional)",
+          "skip": "integer (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_GET_SUPPORTED_LANGUAGES",
+        "description": "Purpose: Retrieve supported languages in the user's mailbox. Use when you need to display or select from available mailbox languages.\nInputs:\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_GET_SUPPORTED_TIME_ZONES",
+        "description": "Purpose: Retrieve supported time zones in the user's mailbox. Use when you need a list of time zones to display or choose from for event scheduling.\nInputs:\n- `timeZoneStandard` (string, optional) – Time zone standard (Windows or Iana)\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "timeZoneStandard": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_LIST_CHILD_MAIL_FOLDERS",
+        "description": "Purpose: List subfolders (childFolders) under a specified Outlook mail folder. Use when navigating nested folder hierarchies or checking if a folder has subfolders. Get parent_folder_id from list_mail_folders (pick the 'id' field of the parent folder) or use a well-known name like 'inbox', 'drafts', 'sentitems', 'deleteditems'.\nInputs:\n- `parent_folder_id` (string, required) – The ID of the parent mail folder. Get from list_mail_folders (use the 'id' field) or a well-known name like 'inbox'.\n- `filter` (string, optional) – OData filter expression\n- `include_hidden_folders` (boolean, optional) – Whether to include hidden folders\n- `select` (array of strings, optional) – List of properties to select\n- `top` (integer, optional) – Max number of folders to return\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "parent_folder_id": "string",
+          "filter": "string (optional)",
+          "include_hidden_folders": "boolean (optional)",
+          "select": "array (optional)",
+          "top": "integer (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_LIST_EMAIL_RULES",
+        "description": "Purpose: List all email rules from the user's inbox. Use when you need to see existing rules before creating, updating, or deleting them. The returned rules include their 'id' field which you can pass to delete_email_rule to remove a specific rule.\nInputs:\n- `top` (integer, optional) – Max number of rules to return\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "top": "integer (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_LIST_MAIL_FOLDER_MESSAGES",
+        "description": "Purpose: List messages from a specific mail folder including subfolders. Use when you need to retrieve messages from a particular folder or subfolder by its ID or well-known name. Get mail_folder_id from list_mail_folders (pick the 'id' field of the folder) or list_child_mail_folders for subfolders. You can also use well-known names like 'inbox', 'drafts', 'sentitems', 'deleteditems'.\nInputs:\n- `mail_folder_id` (string, required) – The ID of the mail folder. Get from list_mail_folders or list_child_mail_folders (use the 'id' field), or a well-known name like 'inbox'.\n- `filter` (string, optional) – OData filter expression\n- `orderby` (string, optional) – Property to order by (e.g. 'receivedDateTime desc')\n- `select` (array of strings, optional) – List of properties to select\n- `skip` (integer, optional) – Number of items to skip\n- `top` (integer, optional) – Max number of messages to return\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "mail_folder_id": "string",
+          "filter": "string (optional)",
+          "orderby": "string (optional)",
+          "select": "array (optional)",
+          "skip": "integer (optional)",
+          "top": "integer (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_LIST_USERS",
+        "description": "Purpose: List users in Microsoft Entra ID. Use when you need to retrieve a paginated list of users, optionally filtering or selecting specific properties. For the signed-in user only, use get_profile instead. Note: requires User.Read.All or User.ReadBasic.All permission for listing other users.\nInputs:\n- `filter` (string, optional) – OData filter expression (e.g. \"startswith(displayName, 'John')\" or \"department eq 'Engineering'\")\n- `select` (array of strings, optional) – List of properties to select (e.g. 'displayName', 'mail', 'userPrincipalName', 'id', 'jobTitle')\n- `skip` (integer, optional) – Number of items to skip\n- `top` (integer, optional) – Max number of users to return\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "filter": "string (optional)",
+          "select": "array (optional)",
+          "skip": "integer (optional)",
+          "top": "integer (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_PERMANENT_DELETE_MESSAGE",
+        "description": "Purpose: Permanently delete an Outlook message by moving it to the Purges folder in the dumpster. Unlike standard delete_message, this action makes the message UNRECOVERABLE by the user. IMPORTANT: This is NOT the same as delete_message — permanentDelete is irreversible and not available in US Government L4, L5 (DOD), or China (21Vianet) deployments. Get message_id from list_messages or search_messages (pick the 'id' field). Optionally provide mail_folder_id from list_mail_folders.\nInputs:\n- `message_id` (string, required) – The ID of the message to permanently delete. Get from list_messages or search_messages.\n- `mail_folder_id` (string, optional) – Optional folder ID containing the message. Get from list_mail_folders.\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "message_id": "string",
+          "mail_folder_id": "string (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_PIN_MESSAGE",
+        "description": "Purpose: Pin a message in a Teams chat. Use when you want to mark an important message for quick access. Get chat_id from list_chats (pick the 'id' field). Get message_url by constructing it: https://graph.microsoft.com/v1.0/chats/{chat_id}/messages/{message_id}. Get message_id from list_chat_messages (pick the 'id' field of the message you want to pin).\nInputs:\n- `chat_id` (string, required) – The ID of the chat. Get from list_chats.\n- `message_url` (string, required) – The full URL of the message to pin. Format: https://graph.microsoft.com/v1.0/chats/{chat_id}/messages/{message_id}. Get message_id from list_chat_messages.\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "chat_id": "string",
+          "message_url": "string"
+        }
+      },
+      {
+        "name": "OUTLOOK_QUERY_EMAILS",
+        "description": "Purpose: Query Outlook emails within a SINGLE folder using OData filters. Build precise server-side filters for dates, read status, importance, subjects, attachments, and conversations. Best for structured queries on message metadata within a specific folder. Returns up to 100 messages per request with pagination support. Searches SINGLE folder only (inbox, sentitems, etc.) - NOT across all folders. For cross-folder search use search_messages. Get folder name or ID from list_mail_folders.\nInputs:\n- `folder` (string, optional) – Folder name or ID. Get from list_mail_folders. Well-known: 'inbox', 'drafts', 'sentitems', 'deleteditems', 'junkemail', 'archive'. Defaults to inbox.\n- `filter` (string, optional) – OData filter expression (e.g. \"isRead eq false\", \"importance eq 'high'\", \"hasAttachments eq true\", \"receivedDateTime ge 2026-02-01T00:00:00Z\", \"contains(subject, 'meeting')\")\n- `orderby` (string, optional) – Property to order by (e.g. 'receivedDateTime desc')\n- `select` (array of strings, optional) – List of properties to select\n- `skip` (integer, optional) – Number of items to skip (pagination)\n- `top` (integer, optional) – Max number of messages to return (max 100)\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "folder": "string (optional)",
+          "filter": "string (optional)",
+          "orderby": "string (optional)",
+          "select": "array (optional)",
+          "skip": "integer (optional)",
+          "top": "integer (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_SEND_DRAFT",
+        "description": "Purpose: Send an existing draft message. Use after creating a draft (via create_draft) when you want to deliver it to recipients immediately. Get message_id from create_draft (the returned 'id'), or from list_messages with folder='drafts' (pick the 'id' field of the draft you want to send).\nInputs:\n- `message_id` (string, required) – The ID of the draft message to send. Get from create_draft or list_messages (folder='drafts').\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "message_id": "string",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_UPDATE_EMAIL_RULE",
+        "description": "Purpose: Update an existing email rule. Provide only the fields you want to change. Get ruleId from list_email_rules (pick the 'id' field of the rule you want to update).\nInputs:\n- `ruleId` (string, required) – The ID of the email rule to update. Get from list_email_rules (use the 'id' field).\n- `displayName` (string, optional) – New display name for the rule\n- `conditions` (object, optional) – New conditions (replaces existing). Same format as create_email_rule conditions.\n- `actions` (object, optional) – New actions (replaces existing). Same format as create_email_rule actions.\n- `isEnabled` (boolean, optional) – Enable or disable the rule\n- `sequence` (integer, optional) – New order of the rule in the list (must be >= 1)\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "ruleId": "string",
+          "displayName": "string (optional)",
+          "conditions": "object (optional)",
+          "actions": "object (optional)",
+          "isEnabled": "boolean (optional)",
+          "sequence": "integer (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_LIST_CHATS",
+        "description": "Purpose: List Teams chats for the signed-in user. Use when you need chat IDs and topics to select a chat for further actions like list_chat_messages.\nInputs:\n- `top` (integer, optional) – Max number of chats to return\n- `filter` (string, optional) – OData filter expression\n- `orderby` (string, optional) – Property to order by\n- `expand` (string, optional) – Property to expand (e.g. 'members', 'lastMessagePreview')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "top": "integer (optional)",
+          "filter": "string (optional)",
+          "orderby": "string (optional)",
+          "expand": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_LIST_CHAT_MESSAGES",
+        "description": "Purpose: List messages in a Teams chat. Use when you need message IDs to select a specific message for further actions. Get chat_id from list_chats (pick the 'id' field of the chat you want to read messages from).\nInputs:\n- `chat_id` (string, required) – The ID of the chat. Get from list_chats.\n- `top` (integer, optional) – Max number of messages to return\n- `filter` (string, optional) – OData filter expression\n- `orderby` (string, optional) – Property to order by\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "chat_id": "string",
+          "top": "integer (optional)",
+          "filter": "string (optional)",
+          "orderby": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_LIST_CALENDARS",
+        "description": "Purpose: List calendars in the signed-in user's mailbox. Use when you need to retrieve calendars with optional OData queries. Use this first when you need a calendar id for other calendar-related operations.\nInputs:\n- `select` (array of strings, optional) – List of properties to select\n- `filter` (string, optional) – OData filter expression\n- `orderby` (array of strings, optional) – List of properties to order by\n- `top` (integer, optional) – Number of items to return\n- `skip` (integer, optional) – Number of items to skip\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "select": "array (optional)",
+          "filter": "string (optional)",
+          "orderby": "array (optional)",
+          "top": "integer (optional)",
+          "skip": "integer (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_LIST_EVENT_ATTACHMENTS",
+        "description": "Purpose: List attachments for a specific calendar event. Use when you have an event ID and need to view its attachments. Get event_id from list_events or get_event.\nInputs:\n- `event_id` (string, required) – The ID of the event\n- `select` (array of strings, optional) – List of properties to select\n- `filter` (string, optional) – OData filter expression\n- `orderby` (array of strings, optional) – List of properties to order by\n- `top` (integer, optional) – Number of items to return\n- `skip` (integer, optional) – Number of items to skip\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "event_id": "string",
+          "select": "array (optional)",
+          "filter": "string (optional)",
+          "orderby": "array (optional)",
+          "top": "integer (optional)",
+          "skip": "integer (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_LIST_ATTACHMENTS",
+        "description": "Purpose: List metadata (like name, size, and type, but not contentBytes) for all attachments of a specified email message. Get message_id from list_messages or search_messages.\nInputs:\n- `message_id` (string, required) – The ID of the message\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "message_id": "string",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_LIST_REMINDERS",
+        "description": "Purpose: Retrieve reminders for events occurring within a specified time range. Use when you need to see upcoming reminders between two datetimes. Use list_events or get_event if you need full event details.\nInputs:\n- `startDateTime` (string, required) – Start of the time range (ISO 8601 format, e.g., 2026-02-04T00:00:00Z)\n- `endDateTime` (string, required) – End of the time range (ISO 8601 format, e.g., 2026-02-11T00:00:00Z)\n- `userId` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "startDateTime": "string",
+          "endDateTime": "string",
+          "userId": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_LIST_FILES",
+        "description": "Purpose: List files and folders in the workspace directory (WORKSPACE_PATH). Use when you need to see what files are available before attaching them to emails or events. Files are restricted to the workspace directory for security.\nInputs:\n- `subfolder` (string, optional) – Optional subfolder path (relative to workspace root) to list. Example: 'attachments' or 'documents/reports'. If omitted, lists the root workspace directory.\n- `include_hidden` (boolean, optional) – Whether to include hidden files (files starting with '.'). Default: false.\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "subfolder": "string (optional)",
+          "include_hidden": "boolean (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_ADD_EVENT_ATTACHMENT",
+        "description": "Purpose: Add an attachment to a specific calendar event. Use when you need to attach a file or nested item to an existing event. Get event_id from list_events or get_event. For file attachments, you can provide: file_path (auto-encodes file), text_content (auto-encodes text), or contentBytes (pre-encoded Base64).\nInputs:\n- `event_id` (string, required) – The ID of the event\n- `name` (string, required) – The name of the attachment (e.g., 'document.pdf', 'notes.txt')\n- `odata_type` (string, required) – The type of attachment\n- `file_path` (string, optional) – Path to a file to attach - will be automatically read and Base64 encoded\n- `text_content` (string, optional) – Plain text content to attach - will be automatically Base64 encoded\n- `contentBytes` (string, optional) – Base64-encoded content (use only if you already have Base64 data)\n- `item` (object, optional) – Item data (for item attachments)\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "event_id": "string",
+          "name": "string",
+          "odata_type": "string",
+          "file_path": "string (optional)",
+          "text_content": "string (optional)",
+          "contentBytes": "string (optional)",
+          "item": "object (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_CREATE_EVENT",
+        "description": "Purpose: Create a new calendar event, ensuring start datetime is chronologically before end datetime. Use list_calendars first if you need to inspect calendars before creating events.\nInputs:\n- `subject` (string, required) – The subject of the event\n- `body` (string, required) – The body content of the event\n- `start_datetime` (string, required) – Start date/time (ISO 8601 format, e.g., 2026-02-05T10:00:00)\n- `end_datetime` (string, required) – End date/time (ISO 8601 format, e.g., 2026-02-05T11:00:00)\n- `time_zone` (string, required) – Time zone (e.g., Pacific Standard Time, UTC)\n- `location` (string, optional) – Location of the event\n- `attendees_info` (array of objects, optional) – List of attendee info [{emailAddress: {address, name}, type}]\n- `categories` (array of strings, optional) – List of categories\n- `is_html` (boolean, optional) – Whether body is HTML\n- `is_online_meeting` (boolean, optional) – Whether it's an online meeting\n- `online_meeting_provider` (string, optional) – Online meeting provider (teamsForBusiness, skypeForBusiness, skypeForConsumer)\n- `show_as` (string, optional) – Show as status (free, tentative, busy, oof, workingElsewhere)\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "subject": "string",
+          "body": "string",
+          "start_datetime": "string",
+          "end_datetime": "string",
+          "time_zone": "string",
+          "location": "string (optional)",
+          "attendees_info": "array (optional)",
+          "categories": "array (optional)",
+          "is_html": "boolean (optional)",
+          "is_online_meeting": "boolean (optional)",
+          "online_meeting_provider": "string (optional)",
+          "show_as": "string (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_CREATE_CONTACT",
+        "description": "Purpose: Create a new contact in the user's contacts folder. Use get_contact_folders to get folder_id if you want to store the contact in a specific folder. Use list_contacts if you want to inspect existing contacts first.\nInputs:\n- `givenName` (string, optional) – First name\n- `surname` (string, optional) – Last name\n- `displayName` (string, optional) – Display name\n- `emailAddresses` (array of objects, optional) – List of email addresses [{address, name}]\n- `businessPhones` (array of strings, optional) – List of business phone numbers\n- `mobilePhone` (string, optional) – Mobile phone number\n- `homePhone` (string, optional) – Home phone number\n- `companyName` (string, optional) – Company name\n- `department` (string, optional) – Department\n- `jobTitle` (string, optional) – Job title\n- `officeLocation` (string, optional) – Office location\n- `birthday` (string, optional) – Birthday (ISO 8601 date, e.g., 1990-01-15)\n- `categories` (array of strings, optional) – List of categories\n- `notes` (string, optional) – Notes about the contact\n- `folderId` (string, optional) – Contact folder ID to store the contact in a specific folder. Get folder_id from get_contact_folders tool. If not provided, contact is created in the default contacts folder.\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "givenName": "string (optional)",
+          "surname": "string (optional)",
+          "displayName": "string (optional)",
+          "emailAddresses": "array (optional)",
+          "businessPhones": "array (optional)",
+          "mobilePhone": "string (optional)",
+          "homePhone": "string (optional)",
+          "companyName": "string (optional)",
+          "department": "string (optional)",
+          "jobTitle": "string (optional)",
+          "officeLocation": "string (optional)",
+          "birthday": "string (optional)",
+          "categories": "array (optional)",
+          "notes": "string (optional)",
+          "folderId": "string (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_CREATE_DRAFT",
+        "description": "Purpose: Create an email draft with subject, body, recipients, and an optional attachment. Supports creating drafts as part of existing conversation threads. Use list_messages to later locate this draft by subject, recipients, or isDraft=true.\nInputs:\n- `subject` (string, required) – The subject of the email\n- `body` (string, required) – The body content of the email\n- `to_recipients` (array of strings, required) – List of recipient email addresses\n- `cc_recipients` (array of strings, optional) – List of CC email addresses\n- `bcc_recipients` (array of strings, optional) – List of BCC email addresses\n- `is_html` (boolean, optional) – Whether body is HTML\n- `conversation_id` (string, optional) – Conversation ID for threading\n- `attachment` (object, optional) – Attachment object {name, contentType, contentBytes}\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "subject": "string",
+          "body": "string",
+          "to_recipients": "array",
+          "cc_recipients": "array (optional)",
+          "bcc_recipients": "array (optional)",
+          "is_html": "boolean (optional)",
+          "conversation_id": "string (optional)",
+          "attachment": "object (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_CREATE_DRAFT_REPLY",
+        "description": "Purpose: Create a draft reply to an existing message, optionally including a comment and cc/bcc recipients. Get the original message_id from list_messages or search_messages.\nInputs:\n- `message_id` (string, required) – The ID of the message to reply to\n- `comment` (string, optional) – Optional comment/reply text\n- `cc_emails` (array of strings, optional) – List of CC email addresses\n- `bcc_emails` (array of strings, optional) – List of BCC email addresses\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "message_id": "string",
+          "comment": "string (optional)",
+          "cc_emails": "array (optional)",
+          "bcc_emails": "array (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_DELETE_CONTACT",
+        "description": "Purpose: Permanently delete an existing contact. Get contact_id from list_contacts or get_contact.\nInputs:\n- `contact_id` (string, required) – The ID of the contact to delete\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "contact_id": "string",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_DELETE_EVENT",
+        "description": "Purpose: Delete an existing calendar event, with an option to send cancellation notifications to attendees. Get event_id from list_events or get_event.\nInputs:\n- `event_id` (string, required) – The ID of the event to delete\n- `send_notifications` (boolean, optional) – Whether to send cancellation notifications to attendees\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "event_id": "string",
+          "send_notifications": "boolean (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_GET_CONTACT",
+        "description": "Purpose: Retrieve a specific contact by its contact ID. Get contact_id from list_contacts or get_contact_folders + contacts in a folder.\nInputs:\n- `contact_id` (string, required) – The ID of the contact to retrieve\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "contact_id": "string",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_GET_CONTACT_FOLDERS",
+        "description": "Purpose: Retrieves a list of contact folders in the signed-in user's mailbox. Use after authentication when you need to browse or select among contact folders.\nInputs:\n- `select` (array of strings, optional) – List of properties to select\n- `filter` (string, optional) – OData filter expression\n- `orderby` (array of strings, optional) – List of properties to order by\n- `top` (integer, optional) – Number of items to return\n- `skip` (integer, optional) – Number of items to skip\n- `expand` (array of strings, optional) – List of properties to expand\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "select": "array (optional)",
+          "filter": "string (optional)",
+          "orderby": "array (optional)",
+          "top": "integer (optional)",
+          "skip": "integer (optional)",
+          "expand": "array (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_GET_EVENT",
+        "description": "Purpose: Retrieve the full details of a specific calendar event by its ID. Get event_id from list_events or from reminders that reference events.\nInputs:\n- `event_id` (string, required) – The ID of the event to retrieve\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "event_id": "string",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_GET_MESSAGE",
+        "description": "Purpose: Retrieve a specific email message by its ID from the user's mailbox. Use the 'select' parameter to include specific fields like 'internetMessageHeaders'. Get message_id from list_messages or search_messages.\nInputs:\n- `message_id` (string, required) – The ID of the message to retrieve\n- `select` (string, optional) – Comma-separated list of properties to select (e.g., 'subject,body,internetMessageHeaders')\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "message_id": "string",
+          "select": "string (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_GET_PROFILE",
+        "description": "Purpose: Retrieves the Microsoft Outlook profile for a specified user.\nInputs:\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_GET_SCHEDULE",
+        "description": "Purpose: Retrieves free/busy schedule information for specified email addresses within a defined time window.\nInputs:\n- `Schedules` (array of strings, required) – List of email addresses to get schedule for\n- `StartTime` (object, required) – Start time object {dateTime: '2026-02-04T09:00:00', timeZone: 'Pacific Standard Time'}\n- `EndTime` (object, required) – End time object {dateTime: '2026-02-04T18:00:00', timeZone: 'Pacific Standard Time'}\n- `availabilityViewInterval` (string, optional) – Interval in minutes (e.g., '30')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "Schedules": "array",
+          "StartTime": "object",
+          "EndTime": "object",
+          "availabilityViewInterval": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_LIST_CONTACTS",
+        "description": "Purpose: Retrieves a user's Microsoft Outlook contacts, from the default or a specified contact folder.\nInputs:\n- `contact_folder_id` (string, optional) – Contact folder ID to retrieve contacts from a specific folder\n- `filter` (string, optional) – OData filter expression\n- `orderby` (array of strings, optional) – List of properties to order by\n- `select` (array of strings, optional) – List of properties to select\n- `top` (integer, optional) – Number of items to return\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "contact_folder_id": "string (optional)",
+          "filter": "string (optional)",
+          "orderby": "array (optional)",
+          "select": "array (optional)",
+          "top": "integer (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_LIST_EVENTS",
+        "description": "Purpose: Retrieves events from a user's Outlook calendar via Microsoft Graph API, supporting pagination, filtering, property selection, sorting, and timezone specification.\nInputs:\n- `expand_recurring_events` (boolean, optional) – If true, uses calendarView to expand recurring events\n- `filter` (string, optional) – OData filter expression\n- `orderby` (array of strings, optional) – List of properties to order by\n- `select` (array of strings, optional) – List of properties to select\n- `skip` (integer, optional) – Number of items to skip\n- `timezone` (string, optional) – Timezone for the response (e.g., 'Pacific Standard Time')\n- `top` (integer, optional) – Number of items to return\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "expand_recurring_events": "boolean (optional)",
+          "filter": "string (optional)",
+          "orderby": "array (optional)",
+          "select": "array (optional)",
+          "skip": "integer (optional)",
+          "timezone": "string (optional)",
+          "top": "integer (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_LIST_MAIL_FOLDERS",
+        "description": "Purpose: Lists a user's top-level mail folders. Use when you need folders like Inbox, Drafts, Sent Items. Set include_hidden_folders=true to include hidden folders.\nInputs:\n- `include_hidden_folders` (boolean, optional) – Whether to include hidden folders\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "include_hidden_folders": "boolean (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_LIST_MESSAGES",
+        "description": "Purpose: Retrieves a list of email messages from a specified mail folder in an Outlook mailbox, with options for filtering (including by conversationId to get all messages in a thread), pagination, and sorting. Ensure 'user_id' and 'folder' are valid, and all date/time strings are in ISO 8601 format.\nInputs:\n- `folder` (string, optional) – Mail folder ID or well-known name (inbox, drafts, sentitems, deleteditems)\n- `categories` (array of strings, optional) – List of categories to filter by\n- `conversationId` (string, optional) – Conversation ID to get all messages in a thread\n- `from_address` (string, optional) – Sender email address to filter by\n- `has_attachments` (boolean, optional) – Filter for messages with attachments\n- `importance` (string, optional) – Importance filter\n- `is_read` (boolean, optional) – Filter for read/unread messages\n- `orderby` (array of strings, optional) – List of properties to order by\n- `received_date_time_ge` (string, optional) – Filter for receivedDateTime >= value (ISO 8601)\n- `received_date_time_gt` (string, optional) – Filter for receivedDateTime > value (ISO 8601)\n- `received_date_time_le` (string, optional) – Filter for receivedDateTime <= value (ISO 8601)\n- `received_date_time_lt` (string, optional) – Filter for receivedDateTime < value (ISO 8601)\n- `select` (array of strings, optional) – List of properties to select\n- `sent_date_time_gt` (string, optional) – Filter for sentDateTime > value (ISO 8601)\n- `sent_date_time_lt` (string, optional) – Filter for sentDateTime < value (ISO 8601)\n- `skip` (integer, optional) – Number of items to skip\n- `subject` (string, optional) – Exact subject to filter by\n- `subject_contains` (string, optional) – Substring to search in subject\n- `subject_endswith` (string, optional) – Suffix to search in subject\n- `subject_startswith` (string, optional) – Prefix to search in subject\n- `top` (integer, optional) – Number of items to return\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "folder": "string (optional)",
+          "categories": "array (optional)",
+          "conversationId": "string (optional)",
+          "from_address": "string (optional)",
+          "has_attachments": "boolean (optional)",
+          "importance": "string (optional)",
+          "is_read": "boolean (optional)",
+          "orderby": "array (optional)",
+          "received_date_time_ge": "string (optional)",
+          "received_date_time_gt": "string (optional)",
+          "received_date_time_le": "string (optional)",
+          "received_date_time_lt": "string (optional)",
+          "select": "array (optional)",
+          "sent_date_time_gt": "string (optional)",
+          "sent_date_time_lt": "string (optional)",
+          "skip": "integer (optional)",
+          "subject": "string (optional)",
+          "subject_contains": "string (optional)",
+          "subject_endswith": "string (optional)",
+          "subject_startswith": "string (optional)",
+          "top": "integer (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_MOVE_MESSAGE",
+        "description": "Purpose: Move a message to another folder within the specified user's mailbox. This creates a new copy of the message in the destination folder and removes the original message. Get message_id from list_messages or search_messages, and destination_id from list_mail_folders.\nInputs:\n- `message_id` (string, required) – The ID of the message to move\n- `destination_id` (string, required) – The ID of the destination folder (or well-known name like 'inbox', 'drafts', 'deleteditems')\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "message_id": "string",
+          "destination_id": "string",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_REPLY_EMAIL",
+        "description": "Purpose: Send a plain text reply to an email message, identified by message_id, allowing optional CC and BCC recipients. Get message_id from list_messages or search_messages (must be a received message, not a draft).\nInputs:\n- `message_id` (string, required) – The ID of the message to reply to\n- `comment` (string, required) – The reply text/comment to send\n- `cc_emails` (array of strings, optional) – List of CC email addresses\n- `bcc_emails` (array of strings, optional) – List of BCC email addresses\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "message_id": "string",
+          "comment": "string",
+          "cc_emails": "array (optional)",
+          "bcc_emails": "array (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_SEARCH_MESSAGES",
+        "description": "Purpose: Search messages in the mailbox using filters for sender, subject, attachments, and pagination. Use this to find message_id values for tools like get_message, reply_email, add_mail_attachment, move_message, and download_attachment.\nInputs:\n- `query` (string, required) – The search query string\n- `fromEmail` (string, optional) – Sender email address to filter by. Leave empty or omit to not filter by sender.\n- `subject` (string, optional) – Subject to search for. Leave empty or omit to not filter by subject.\n- `hasAttachments` (boolean, optional) – Filter for messages with attachments\n- `from_index` (integer, optional) – Starting index for pagination\n- `size` (integer, optional) – Number of results to return\n- `enable_top_results` (boolean, optional) – Enable top results sorting\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "query": "string",
+          "fromEmail": "string (optional)",
+          "subject": "string (optional)",
+          "hasAttachments": "boolean (optional)",
+          "from_index": "integer (optional)",
+          "size": "integer (optional)",
+          "enable_top_results": "boolean (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_SEND_EMAIL",
+        "description": "Purpose: Send an email with subject, body, recipients, and an optional attachment via Microsoft Graph API. Attachments require a non-empty file with valid name and mimetype. Use get_profile if you need the current user's details before sending.\nInputs:\n- `subject` (string, required) – The subject of the email\n- `body` (string, required) – The body content of the email\n- `to_email` (string, required) – The primary recipient email address\n- `to_name` (string, optional) – Name of the primary recipient\n- `cc_emails` (array of strings, optional) – List of CC email addresses\n- `bcc_emails` (array of strings, optional) – List of BCC email addresses\n- `is_html` (boolean, optional) – Whether body is HTML\n- `attachment` (object, optional) – Attachment object {name, contentType, contentBytes}\n- `save_to_sent_items` (boolean, optional) – Whether to save the email to Sent Items (default: true)\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "subject": "string",
+          "body": "string",
+          "to_email": "string",
+          "to_name": "string (optional)",
+          "cc_emails": "array (optional)",
+          "bcc_emails": "array (optional)",
+          "is_html": "boolean (optional)",
+          "attachment": "object (optional)",
+          "save_to_sent_items": "boolean (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_UPDATE_CALENDAR_EVENT",
+        "description": "Purpose: Update specified fields of an existing calendar event. Get event_id from list_events or get_event.\nInputs:\n- `event_id` (string, required) – The ID of the event to update\n- `subject` (string, optional) – Subject of the event\n- `body` (object, optional) – Body object with contentType and content\n- `start_datetime` (string, optional) – Start date/time (ISO 8601 format, e.g., 2026-02-05T10:00:00)\n- `end_datetime` (string, optional) – End date/time (ISO 8601 format, e.g., 2026-02-05T11:00:00)\n- `time_zone` (string, optional) – Time zone (e.g., Pacific Standard Time, UTC)\n- `location` (object, optional) – Location object with displayName\n- `attendees` (array of objects, optional) – List of attendee info [{emailAddress: {address, name}, type}]\n- `categories` (array of strings, optional) – List of categories\n- `show_as` (string, optional) – Show as status\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "event_id": "string",
+          "subject": "string (optional)",
+          "body": "object (optional)",
+          "start_datetime": "string (optional)",
+          "end_datetime": "string (optional)",
+          "time_zone": "string (optional)",
+          "location": "object (optional)",
+          "attendees": "array (optional)",
+          "categories": "array (optional)",
+          "show_as": "string (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_UPDATE_CONTACT",
+        "description": "Purpose: Update an existing contact, identified by contact_id for the specified user_id, requiring at least one other field to be modified. Get contact_id from list_contacts or get_contact.\nInputs:\n- `contact_id` (string, required) – The ID of the contact to update\n- `givenName` (string, optional) – First name\n- `surname` (string, optional) – Last name\n- `displayName` (string, optional) – Display name\n- `emailAddresses` (array of objects, optional) – List of email addresses [{address, name}]\n- `businessPhones` (array of strings, optional) – List of business phone numbers\n- `mobilePhone` (string, optional) – Mobile phone number\n- `homePhones` (array of strings, optional) – List of home phone numbers\n- `companyName` (string, optional) – Company name\n- `department` (string, optional) – Department\n- `jobTitle` (string, optional) – Job title\n- `officeLocation` (string, optional) – Office location\n- `birthday` (string, optional) – Birthday (ISO 8601 date, e.g., 1990-01-15)\n- `categories` (array of strings, optional) – List of categories\n- `notes` (string, optional) – Notes about the contact\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "contact_id": "string",
+          "givenName": "string (optional)",
+          "surname": "string (optional)",
+          "displayName": "string (optional)",
+          "emailAddresses": "array (optional)",
+          "businessPhones": "array (optional)",
+          "mobilePhone": "string (optional)",
+          "homePhones": "array (optional)",
+          "companyName": "string (optional)",
+          "department": "string (optional)",
+          "jobTitle": "string (optional)",
+          "officeLocation": "string (optional)",
+          "birthday": "string (optional)",
+          "categories": "array (optional)",
+          "notes": "string (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_UPDATE_EMAIL",
+        "description": "Purpose: Update specified properties of an existing email message. message_id must identify a valid message within the specified user_id's mailbox, and it must be a draft. Get draft message_id from list_messages (filter by folder='drafts' and is_read/isDraft as needed) or from create_draft.\nInputs:\n- `message_id` (string, required) – The ID of the message to update\n- `subject` (string, optional) – Subject of the email\n- `body` (object, optional) – Body object with contentType and content\n- `to_recipients` (array of strings, optional) – List of TO recipient email addresses\n- `cc_recipients` (array of strings, optional) – List of CC recipient email addresses\n- `bcc_recipients` (array of strings, optional) – List of BCC recipient email addresses\n- `importance` (string, optional) – Importance level\n- `user_id` (string, optional) – User ID (defaults to 'me')\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "message_id": "string",
+          "subject": "string (optional)",
+          "body": "object (optional)",
+          "to_recipients": "array (optional)",
+          "cc_recipients": "array (optional)",
+          "bcc_recipients": "array (optional)",
+          "importance": "string (optional)",
+          "user_id": "string (optional)"
+        }
+      },
+      {
+        "name": "OUTLOOK_UPDATE_MAILBOX_SETTINGS",
+        "description": "Purpose: Tool to update mailbox settings for the signed-in user. Use when you need to configure automatic replies, default time zone, language, or working hours. Example: schedule automatic replies for vacation.\nInputs:\n- `automaticRepliesSetting` (object, optional) – Automatic replies setting object with status, externalAudience, scheduledStartDateTime, scheduledEndDateTime, internalReplyMessage, externalReplyMessage\n- `language` (object, optional) – Language object with locale and displayName\n- `timeZone` (string, optional) – Time zone string (e.g., 'Pacific Standard Time')\n- `workingHours` (object, optional) – Working hours object with daysOfWeek, startTime, endTime, timeZone\n\nExample payload: See tool documentation for examples.\nResponse fields:\n- `data` (object/array) – response data from Microsoft Graph API.\n- `error` (string/object) – error description if the request fails.\n- `successful` (boolean) – `true` when the operation succeeded.",
+        "parameters": {
+          "automaticRepliesSetting": "object (optional)",
+          "language": "object (optional)",
+          "timeZone": "string (optional)",
+          "workingHours": "object (optional)"
+        }
+      }
+    ]
+  }
+}
